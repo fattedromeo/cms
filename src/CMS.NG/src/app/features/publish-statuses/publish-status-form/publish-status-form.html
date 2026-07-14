@@ -1,0 +1,87 @@
+<div class="page">
+  <p-toast />
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card page-header">
+      <div class="page-header__titles">
+        <h1 class="page-header__title">{{ isEdit() ? '編輯發布狀態' : '新增發布狀態' }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <p-button
+          label="取消"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          type="button"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="儲存"
+          icon="pi pi-check"
+          severity="success"
+          type="submit"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card status-card">載入中…</div>
+    } @else {
+      <div class="card">
+        <h2 class="section-title">發布狀態資料</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="pkid">主代碼 <span class="required">*</span></label>
+            <p-inputNumber
+              inputId="pkid"
+              formControlName="pkid"
+              [useGrouping]="false"
+              [min]="0"
+              [max]="255"
+              placeholder="0–255"
+              styleClass="w-full"
+            />
+            @if (isEdit()) {
+              <small class="field-hint">主代碼為不可修改的鍵值。</small>
+            }
+            @if (invalid('pkid')) {
+              <small class="field-error">主代碼為必填，且須介於 0–255。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="description">狀態說明 <span class="required">*</span></label>
+            <input
+              id="description"
+              type="text"
+              pInputText
+              formControlName="description"
+              maxlength="50"
+              placeholder="請輸入狀態說明"
+              [class.ng-invalid-visual]="invalid('description')"
+            />
+            @if (invalid('description')) {
+              <small class="field-error">狀態說明為必填。</small>
+            }
+          </div>
+        </div>
+
+        <div class="checkbox-row">
+          <div class="checkbox-field">
+            <p-checkbox inputId="isDraft" formControlName="isDraft" [binary]="true" />
+            <label for="isDraft">草稿</label>
+          </div>
+          <div class="checkbox-field">
+            <p-checkbox inputId="isPublished" formControlName="isPublished" [binary]="true" />
+            <label for="isPublished">已發布</label>
+          </div>
+          <div class="checkbox-field">
+            <p-checkbox inputId="isDiscontinued" formControlName="isDiscontinued" [binary]="true" />
+            <label for="isDiscontinued">已停用</label>
+          </div>
+        </div>
+      </div>
+    }
+  </form>
+</div>

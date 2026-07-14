@@ -1,0 +1,141 @@
+<div class="page">
+  <p-toast />
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card page-header">
+      <div class="page-header__titles">
+        <h1 class="page-header__title">{{ isEdit() ? '編輯合作廠商' : '新增合作廠商' }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <p-button
+          label="取消"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          type="button"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="儲存"
+          icon="pi pi-check"
+          severity="success"
+          type="submit"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card status-card">載入中…</div>
+    } @else {
+      <div class="card">
+        <h2 class="section-title">合作廠商資料</h2>
+        <div class="form-grid">
+          @if (isEdit()) {
+            <div class="field">
+              <label for="pkid">主代碼</label>
+              <p-inputNumber
+                inputId="pkid"
+                formControlName="pkid"
+                [useGrouping]="false"
+                styleClass="w-full"
+              />
+              <small class="field-hint">主代碼為系統自動產生，不可修改。</small>
+            </div>
+          }
+
+          <div class="field">
+            <label for="name">名稱 <span class="required">*</span></label>
+            <input
+              id="name"
+              type="text"
+              pInputText
+              formControlName="name"
+              maxlength="50"
+              placeholder="請輸入廠商名稱"
+              [class.ng-invalid-visual]="invalid('name')"
+            />
+            @if (invalid('name')) {
+              <small class="field-error">名稱為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="appKey">應用代碼 <span class="required">*</span></label>
+            <input
+              id="appKey"
+              type="text"
+              pInputText
+              formControlName="appKey"
+              maxlength="10"
+              placeholder="請輸入應用代碼"
+              [class.ng-invalid-visual]="invalid('appKey')"
+            />
+            @if (invalid('appKey')) {
+              <small class="field-error">應用代碼為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="nameOnPartnerMenu">廠商選單顯示名稱 <span class="required">*</span></label>
+            <input
+              id="nameOnPartnerMenu"
+              type="text"
+              pInputText
+              formControlName="nameOnPartnerMenu"
+              maxlength="200"
+              placeholder="請輸入選單顯示名稱"
+              [class.ng-invalid-visual]="invalid('nameOnPartnerMenu')"
+            />
+            @if (invalid('nameOnPartnerMenu')) {
+              <small class="field-error">廠商選單顯示名稱為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="nameOnCourseDetailPage">課程詳情頁顯示名稱 <span class="required">*</span></label>
+            <input
+              id="nameOnCourseDetailPage"
+              type="text"
+              pInputText
+              formControlName="nameOnCourseDetailPage"
+              maxlength="50"
+              placeholder="請輸入課程詳情頁顯示名稱"
+              [class.ng-invalid-visual]="invalid('nameOnCourseDetailPage')"
+            />
+            @if (invalid('nameOnCourseDetailPage')) {
+              <small class="field-error">課程詳情頁顯示名稱為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="displayOrder">顯示順序 <span class="required">*</span></label>
+            <p-inputNumber
+              inputId="displayOrder"
+              formControlName="displayOrder"
+              [useGrouping]="false"
+              placeholder="0"
+              styleClass="w-full"
+            />
+            @if (invalid('displayOrder')) {
+              <small class="field-error">顯示順序為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="imageFilename">圖片檔名</label>
+            <input
+              id="imageFilename"
+              type="text"
+              pInputText
+              formControlName="imageFilename"
+              maxlength="50"
+              placeholder="選填，例如 partner-logo.png"
+              [class.ng-invalid-visual]="invalid('imageFilename')"
+            />
+          </div>
+        </div>
+      </div>
+    }
+  </form>
+</div>

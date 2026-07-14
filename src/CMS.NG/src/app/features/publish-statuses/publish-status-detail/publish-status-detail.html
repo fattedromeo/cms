@@ -1,0 +1,40 @@
+<div class="page">
+  <div class="card page-header">
+    <div class="page-header__titles">
+      <h1 class="page-header__title">檢視發布狀態</h1>
+      @if (status()) {
+        <span class="page-header__subtitle">{{ status()!.description }}</span>
+      }
+    </div>
+    <div class="page-header__actions">
+      <p-button label="返回" icon="pi pi-arrow-left" severity="secondary" [outlined]="true" (onClick)="back()" />
+      @if (status()) {
+        <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card status-card">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card">查無此發布狀態。</div>
+  } @else if (status(); as s) {
+    <div class="card">
+      <h2 class="section-title">發布狀態資料</h2>
+      <dl class="detail-grid">
+        <dt>主代碼</dt>
+        <dd>{{ s.pkid }}</dd>
+        <dt>狀態說明</dt>
+        <dd>{{ s.description }}</dd>
+        <dt>草稿</dt>
+        <dd><p-tag [value]="s.isDraft ? '是' : '否'" [severity]="s.isDraft ? 'success' : 'secondary'" /></dd>
+        <dt>已發布</dt>
+        <dd><p-tag [value]="s.isPublished ? '是' : '否'" [severity]="s.isPublished ? 'success' : 'secondary'" /></dd>
+        <dt>已停用</dt>
+        <dd>
+          <p-tag [value]="s.isDiscontinued ? '是' : '否'" [severity]="s.isDiscontinued ? 'success' : 'secondary'" />
+        </dd>
+      </dl>
+    </div>
+  }
+</div>

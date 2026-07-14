@@ -1,0 +1,44 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+/* Full-width PrimeNG inputs inside form fields */
+:host ::ng-deep .w-full,
+:host ::ng-deep .p-inputnumber {
+  width: 100%;
+}
+
+:host ::ng-deep .p-inputnumber-input {
+  width: 100%;
+}
+
+input.ng-invalid-visual {
+  border-color: #dc2626;
+}
+
+.field-hint {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+.checkbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem;
+  margin-top: 1.25rem;
+  padding-top: 0.5rem;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.checkbox-field label {
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+}

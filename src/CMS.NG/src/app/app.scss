@@ -1,0 +1,145 @@
+:host {
+  display: block;
+  height: 100vh;
+}
+
+.layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* --- Sidebar ------------------------------------------------------------- */
+.sidebar {
+  width: 250px;
+  flex: 0 0 250px;
+  background: var(--app-sidebar-bg);
+  color: var(--app-sidebar-fg);
+  display: flex;
+  flex-direction: column;
+  transition: width 0.15s ease, flex-basis 0.15s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.layout--collapsed .sidebar {
+  width: 64px;
+  flex-basis: 64px;
+}
+
+.sidebar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 60px;
+  padding: 0 1rem;
+  background: var(--app-sidebar-bg-2);
+  font-weight: 700;
+  font-size: 1.35rem;
+  letter-spacing: 1px;
+  color: #f8fafc;
+}
+
+.layout--collapsed .sidebar__brand {
+  justify-content: center;
+}
+
+.sidebar__collapse {
+  background: transparent;
+  border: none;
+  color: var(--app-sidebar-fg-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: inline-flex;
+}
+
+.sidebar__collapse:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar__nav {
+  padding: 0.5rem 0;
+}
+
+.nav-group__header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--app-sidebar-fg);
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.nav-group__header:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-group__icon {
+  font-size: 1rem;
+  width: 1.1rem;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.nav-group__label {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+.nav-group__chevron {
+  font-size: 0.75rem;
+  color: var(--app-sidebar-fg-muted);
+}
+
+.nav-group__children {
+  background: var(--app-sidebar-bg-2);
+  padding: 0.25rem 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.7rem 1rem 0.7rem 2.25rem;
+  color: var(--app-sidebar-fg);
+  text-decoration: none;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.nav-item__icon {
+  font-size: 0.9rem;
+}
+
+.nav-item--active {
+  background: var(--app-sidebar-active);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.nav-item--disabled {
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.nav-item--disabled:hover {
+  background: transparent;
+}
+
+/* --- Content ------------------------------------------------------------- */
+.content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  height: 100vh;
+}

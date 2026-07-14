@@ -1,0 +1,32 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.users-card {
+  margin-top: 1.25rem;
+}
+
+/* Full-width PrimeNG inputs inside form fields */
+:host ::ng-deep .w-full,
+:host ::ng-deep .p-inputnumber,
+:host ::ng-deep .p-multiselect {
+  width: 100%;
+}
+
+:host ::ng-deep .p-inputnumber-input {
+  width: 100%;
+}
+
+input.ng-invalid-visual {
+  border-color: #dc2626;
+}
+
+/* Wrap multiselect chips onto multiple rows */
+:host ::ng-deep .p-multiselect-label.p-multiselect-label {
+  white-space: normal;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}

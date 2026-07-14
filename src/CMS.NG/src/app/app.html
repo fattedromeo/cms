@@ -1,0 +1,65 @@
+<div class="layout" [class.layout--collapsed]="collapsed()">
+  <aside class="sidebar">
+    <div class="sidebar__brand">
+      @if (!collapsed()) {
+        <span class="sidebar__brand-text">UWA</span>
+      }
+      <button
+        type="button"
+        class="sidebar__collapse"
+        (click)="toggleCollapsed()"
+        [attr.aria-label]="collapsed() ? '展開選單' : '收合選單'"
+      >
+        <i class="pi" [class.pi-angle-left]="!collapsed()" [class.pi-angle-right]="collapsed()"></i>
+      </button>
+    </div>
+
+    <nav class="sidebar__nav">
+      @for (group of navGroups(); track group.labelEn) {
+        <div class="nav-group" [class.nav-group--open]="group.expanded">
+          <button type="button" class="nav-group__header" (click)="toggleGroup(group)">
+            <i class="nav-group__icon" [class]="group.icon"></i>
+            @if (!collapsed()) {
+              <span class="nav-group__label">{{ group.label }} {{ group.labelEn }}</span>
+              @if (group.children.length) {
+                <i
+                  class="nav-group__chevron pi"
+                  [class.pi-angle-down]="group.expanded"
+                  [class.pi-angle-right]="!group.expanded"
+                ></i>
+              } @else {
+                <i class="nav-group__chevron pi pi-angle-right"></i>
+              }
+            }
+          </button>
+
+          @if (group.expanded && !collapsed() && group.children.length) {
+            <div class="nav-group__children">
+              @for (child of group.children; track child.labelEn) {
+                @if (child.route && !child.disabled) {
+                  <a
+                    class="nav-item"
+                    [routerLink]="child.route"
+                    routerLinkActive="nav-item--active"
+                  >
+                    <i class="nav-item__icon" [class]="child.icon"></i>
+                    <span>{{ child.label }} {{ child.labelEn }}</span>
+                  </a>
+                } @else {
+                  <span class="nav-item nav-item--disabled" title="尚未開放">
+                    <i class="nav-item__icon" [class]="child.icon"></i>
+                    <span>{{ child.label }} {{ child.labelEn }}</span>
+                  </span>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+    </nav>
+  </aside>
+
+  <main class="content">
+    <router-outlet />
+  </main>
+</div>

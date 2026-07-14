@@ -1,0 +1,42 @@
+<div class="page">
+  <div class="card page-header">
+    <div class="page-header__titles">
+      <h1 class="page-header__title">檢視合作廠商</h1>
+      @if (partner()) {
+        <span class="page-header__subtitle">{{ partner()!.name }}</span>
+      }
+    </div>
+    <div class="page-header__actions">
+      <p-button label="返回" icon="pi pi-arrow-left" severity="secondary" [outlined]="true" (onClick)="back()" />
+      @if (partner()) {
+        <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card status-card">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card">查無此合作廠商。</div>
+  } @else if (partner(); as p) {
+    <div class="card">
+      <h2 class="section-title">合作廠商資料</h2>
+      <dl class="detail-grid">
+        <dt>主代碼</dt>
+        <dd>{{ p.pkid }}</dd>
+        <dt>名稱</dt>
+        <dd>{{ p.name }}</dd>
+        <dt>應用代碼</dt>
+        <dd>{{ p.appKey }}</dd>
+        <dt>廠商選單顯示名稱</dt>
+        <dd>{{ p.nameOnPartnerMenu }}</dd>
+        <dt>課程詳情頁顯示名稱</dt>
+        <dd>{{ p.nameOnCourseDetailPage }}</dd>
+        <dt>顯示順序</dt>
+        <dd>{{ p.displayOrder }}</dd>
+        <dt>圖片檔名</dt>
+        <dd>{{ p.imageFilename || '—' }}</dd>
+      </dl>
+    </div>
+  }
+</div>

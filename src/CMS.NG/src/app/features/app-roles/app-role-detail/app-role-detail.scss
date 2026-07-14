@@ -1,0 +1,25 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.users-card {
+  margin-top: 1.25rem;
+}
+
+.users-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.25rem;
+}
+
+::ng-deep .user-chip {
+  font-size: 0.85rem;
+}
+
+.muted {
+  color: #94a3b8;
+  padding: 0 0 1.25rem;
+}

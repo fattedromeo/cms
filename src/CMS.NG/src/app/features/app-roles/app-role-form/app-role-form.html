@@ -1,0 +1,106 @@
+<div class="page">
+  <p-toast />
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card page-header">
+      <div class="page-header__titles">
+        <h1 class="page-header__title">{{ isEdit() ? '編輯角色' : '新增角色' }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <p-button
+          label="取消"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          type="button"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="儲存"
+          icon="pi pi-check"
+          severity="success"
+          type="submit"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card status-card">載入中…</div>
+    } @else {
+      <div class="card">
+        <h2 class="section-title">角色資料</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="roleId">角色代碼 <span class="required">*</span></label>
+            <input
+              id="roleId"
+              type="text"
+              pInputText
+              formControlName="roleId"
+              placeholder="請輸入角色代碼"
+              [class.ng-invalid-visual]="invalid('roleId')"
+            />
+            @if (invalid('roleId')) {
+              <small class="field-error">角色代碼為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="roleName">角色名稱 <span class="required">*</span></label>
+            <input
+              id="roleName"
+              type="text"
+              pInputText
+              formControlName="roleName"
+              [class.ng-invalid-visual]="invalid('roleName')"
+            />
+            @if (invalid('roleName')) {
+              <small class="field-error">角色名稱為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="permissionLevel">權限等級 <span class="required">*</span></label>
+            <p-inputNumber
+              inputId="permissionLevel"
+              formControlName="permissionLevel"
+              [useGrouping]="false"
+              [min]="0"
+              styleClass="w-full"
+            />
+            @if (invalid('permissionLevel')) {
+              <small class="field-error">權限等級為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="description">描述</label>
+            <input id="description" type="text" pInputText formControlName="description" />
+          </div>
+        </div>
+      </div>
+
+      <div class="card users-card">
+        <h2 class="section-title">使用者</h2>
+        <div class="form-grid">
+          <div class="field">
+            <p-multiSelect
+              [options]="userOptions()"
+              formControlName="userIds"
+              optionLabel="label"
+              optionValue="pkid"
+              placeholder="選擇使用者（可複選）"
+              display="chip"
+              [filter]="true"
+              filterBy="label"
+              [maxSelectedLabels]="9999"
+              appendTo="body"
+              styleClass="w-full"
+            />
+          </div>
+        </div>
+      </div>
+    }
+  </form>
+</div>

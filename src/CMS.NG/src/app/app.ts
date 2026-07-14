@@ -38,6 +38,7 @@ export class App {
       icon: 'pi pi-folder',
       children: [
         { label: '合作廠商', labelEn: 'Partner', icon: 'pi pi-building', route: '/partners' },
+        { label: '課程群組', labelEn: 'CourseGroup', icon: 'pi pi-tags', route: '/course-groups' },
       ],
     },
     { label: '說明會', labelEn: 'Seminar', icon: 'pi pi-comments', children: [] },

@@ -1,0 +1,32 @@
+<div class="page">
+  <div class="card page-header">
+    <div class="page-header__titles">
+      <h1 class="page-header__title">檢視課程群組</h1>
+      @if (courseGroup()) {
+        <span class="page-header__subtitle">{{ courseGroup()!.description }}</span>
+      }
+    </div>
+    <div class="page-header__actions">
+      <p-button label="返回" icon="pi pi-arrow-left" severity="secondary" [outlined]="true" (onClick)="back()" />
+      @if (courseGroup()) {
+        <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card status-card">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card">查無此課程群組。</div>
+  } @else if (courseGroup(); as g) {
+    <div class="card">
+      <h2 class="section-title">課程群組資料</h2>
+      <dl class="detail-grid">
+        <dt>主代碼</dt>
+        <dd>{{ g.pkid }}</dd>
+        <dt>群組名稱</dt>
+        <dd>{{ g.description }}</dd>
+      </dl>
+    </div>
+  }
+</div>

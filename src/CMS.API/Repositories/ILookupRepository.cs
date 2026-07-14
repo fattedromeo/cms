@@ -12,4 +12,7 @@ public interface ILookupRepository
 
     /// <summary>Partner options for FK pickers (Course, Certification, PartnerCourseGroup). Label = Name.</summary>
     Task<IEnumerable<LookupItem>> GetPartnersAsync(CancellationToken ct = default);
+
+    /// <summary>CourseGroup options for FK pickers (Course, PartnerCourseGroup). Label = Description.</summary>
+    Task<IEnumerable<LookupItem>> GetCourseGroupsAsync(CancellationToken ct = default);
 }

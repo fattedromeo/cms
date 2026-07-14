@@ -53,6 +53,39 @@ export const routes: Routes = [
     ],
   },
   {
+    path: 'course-groups',
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('@features/course-groups/course-group-list/course-group-list').then(
+            (m) => m.CourseGroupList,
+          ),
+      },
+      {
+        path: 'new',
+        loadComponent: () =>
+          import('@features/course-groups/course-group-form/course-group-form').then(
+            (m) => m.CourseGroupForm,
+          ),
+      },
+      {
+        path: ':id',
+        loadComponent: () =>
+          import('@features/course-groups/course-group-detail/course-group-detail').then(
+            (m) => m.CourseGroupDetail,
+          ),
+      },
+      {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('@features/course-groups/course-group-form/course-group-form').then(
+            (m) => m.CourseGroupForm,
+          ),
+      },
+    ],
+  },
+  {
     path: 'publish-statuses',
     children: [
       {

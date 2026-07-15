@@ -18,7 +18,9 @@ export const routes: Routes = [
       {
         path: ':id',
         loadComponent: () =>
-          import('@features/app-roles/app-role-detail/app-role-detail').then((m) => m.AppRoleDetail),
+          import('@features/app-roles/app-role-detail/app-role-detail').then(
+            (m) => m.AppRoleDetail,
+          ),
       },
       {
         path: ':id/edit',
@@ -49,6 +51,31 @@ export const routes: Routes = [
         path: ':id/edit',
         loadComponent: () =>
           import('@features/partners/partner-form/partner-form').then((m) => m.PartnerForm),
+      },
+    ],
+  },
+  {
+    path: 'courses',
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('@features/courses/course-list/course-list').then((m) => m.CourseList),
+      },
+      {
+        path: 'new',
+        loadComponent: () =>
+          import('@features/courses/course-form/course-form').then((m) => m.CourseForm),
+      },
+      {
+        path: ':id',
+        loadComponent: () =>
+          import('@features/courses/course-detail/course-detail').then((m) => m.CourseDetail),
+      },
+      {
+        path: ':id/edit',
+        loadComponent: () =>
+          import('@features/courses/course-form/course-form').then((m) => m.CourseForm),
       },
     ],
   },

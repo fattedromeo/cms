@@ -1,0 +1,442 @@
+<div class="page">
+  <p-toast />
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card page-header">
+      <div class="page-header__titles">
+        <h1 class="page-header__title">{{ isEdit() ? '編輯課程' : '新增課程' }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <p-button
+          label="取消"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          type="button"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="儲存"
+          icon="pi pi-check"
+          severity="success"
+          type="submit"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card status-card">載入中…</div>
+    } @else {
+      <div class="card">
+        <!-- No [lazy]: every panel stays rendered so the datepickers/selects initialise and the
+             per-tab error badges are accurate on first paint. -->
+        <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($any($event))">
+          <p-tablist>
+            <p-tab value="basic">
+              基本資料
+              @if (tabInvalid('basic')) {
+                <i class="pi pi-exclamation-circle tab-error" aria-label="此頁籤有錯誤"></i>
+              }
+            </p-tab>
+            <p-tab value="publish">
+              上架與價格
+              @if (tabInvalid('publish')) {
+                <i class="pi pi-exclamation-circle tab-error" aria-label="此頁籤有錯誤"></i>
+              }
+            </p-tab>
+            <p-tab value="content">
+              課程內容
+              @if (tabInvalid('content')) {
+                <i class="pi pi-exclamation-circle tab-error" aria-label="此頁籤有錯誤"></i>
+              }
+            </p-tab>
+            <p-tab value="relations">
+              關聯
+              @if (tabInvalid('relations')) {
+                <i class="pi pi-exclamation-circle tab-error" aria-label="此頁籤有錯誤"></i>
+              }
+            </p-tab>
+          </p-tablist>
+
+          <p-tabpanels>
+            <!-- 基本資料 -->
+            <p-tabpanel value="basic">
+              <div class="form-grid form-grid--2">
+                @if (isEdit()) {
+                  <div class="field">
+                    <label for="pkid">主代碼</label>
+                    <p-inputNumber
+                      inputId="pkid"
+                      formControlName="pkid"
+                      [useGrouping]="false"
+                      styleClass="w-full"
+                    />
+                    <small class="field-hint">主代碼為系統自動產生，不可修改。</small>
+                  </div>
+                }
+
+                <div class="field">
+                  <label for="displayOrder">顯示順序 <span class="required">*</span></label>
+                  <p-inputNumber
+                    inputId="displayOrder"
+                    formControlName="displayOrder"
+                    [useGrouping]="false"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('displayOrder')) {
+                    <small class="field-error">顯示順序為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="courseId">簡介代碼 <span class="required">*</span></label>
+                  <input
+                    id="courseId"
+                    type="text"
+                    pInputText
+                    formControlName="courseId"
+                    maxlength="50"
+                    [class.ng-invalid-visual]="invalid('courseId')"
+                  />
+                  @if (invalid('courseId')) {
+                    <small class="field-error">簡介代碼為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="prodCourseId">科目代碼 <span class="required">*</span></label>
+                  <input
+                    id="prodCourseId"
+                    type="text"
+                    pInputText
+                    formControlName="prodCourseId"
+                    maxlength="50"
+                    [class.ng-invalid-visual]="invalid('prodCourseId')"
+                  />
+                  @if (invalid('prodCourseId')) {
+                    <small class="field-error">科目代碼為必填。</small>
+                  }
+                </div>
+
+                <div class="field field--full">
+                  <label for="title">課程名稱 <span class="required">*</span></label>
+                  <input
+                    id="title"
+                    type="text"
+                    pInputText
+                    formControlName="title"
+                    maxlength="200"
+                    [class.ng-invalid-visual]="invalid('title')"
+                  />
+                  @if (invalid('title')) {
+                    <small class="field-error">課程名稱為必填。</small>
+                  }
+                </div>
+
+                <div class="field field--full">
+                  <label for="officialTitle">正式課程名稱</label>
+                  <input
+                    id="officialTitle"
+                    type="text"
+                    pInputText
+                    formControlName="officialTitle"
+                    maxlength="300"
+                  />
+                </div>
+
+                <div class="field field--full">
+                  <label for="friendlyUrl">友善網址 <span class="required">*</span></label>
+                  <input
+                    id="friendlyUrl"
+                    type="text"
+                    pInputText
+                    formControlName="friendlyUrl"
+                    maxlength="100"
+                    [class.ng-invalid-visual]="invalid('friendlyUrl')"
+                  />
+                  @if (invalid('friendlyUrl')) {
+                    <small class="field-error">友善網址為必填。</small>
+                  }
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- 上架與價格 -->
+            <p-tabpanel value="publish">
+              <div class="form-grid form-grid--2">
+                <div class="field">
+                  <label for="partnerPkid">原廠 <span class="required">*</span></label>
+                  <p-select
+                    inputId="partnerPkid"
+                    [options]="partnerSelectOptions"
+                    formControlName="partnerPkid"
+                    optionLabel="label"
+                    optionValue="pkid"
+                    placeholder="請選擇原廠"
+                    [filter]="true"
+                    filterBy="label"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('partnerPkid')) {
+                    <small class="field-error">原廠為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="courseGroupPkid">課程群組</label>
+                  <!-- Nullable FK: showClear gives the「無」option. 214 options -> virtual scroll. -->
+                  <p-select
+                    inputId="courseGroupPkid"
+                    [options]="courseGroupSelectOptions"
+                    formControlName="courseGroupPkid"
+                    optionLabel="label"
+                    optionValue="pkid"
+                    placeholder="無"
+                    [showClear]="true"
+                    [filter]="true"
+                    filterBy="label"
+                    [virtualScroll]="true"
+                    [virtualScrollItemSize]="43"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="publishStatusPkid">上架狀態 <span class="required">*</span></label>
+                  <p-select
+                    inputId="publishStatusPkid"
+                    [options]="publishStatusSelectOptions"
+                    formControlName="publishStatusPkid"
+                    optionLabel="label"
+                    optionValue="pkid"
+                    placeholder="請選擇上架狀態"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('publishStatusPkid')) {
+                    <small class="field-error">上架狀態為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="canRepeat">允許重聽</label>
+                  <div class="checkbox-row">
+                    <p-checkbox inputId="canRepeat" formControlName="canRepeat" [binary]="true" />
+                    <label for="canRepeat" class="checkbox-label">允許學員重複上課</label>
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="scheduleOn">上架日期 <span class="required">*</span></label>
+                  <p-datepicker
+                    inputId="scheduleOn"
+                    formControlName="scheduleOn"
+                    dateFormat="yy/mm/dd"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                  <small class="field-hint">變更上架日期時，下架日期會自動設為十年後。</small>
+                  @if (invalid('scheduleOn')) {
+                    <small class="field-error">上架日期為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="scheduleOff">下架日期 <span class="required">*</span></label>
+                  <p-datepicker
+                    inputId="scheduleOff"
+                    formControlName="scheduleOff"
+                    dateFormat="yy/mm/dd"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('scheduleOff')) {
+                    <small class="field-error">下架日期為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="hour">時數 <span class="required">*</span></label>
+                  <p-inputNumber
+                    inputId="hour"
+                    formControlName="hour"
+                    [useGrouping]="false"
+                    [min]="0"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('hour')) {
+                    <small class="field-error">時數為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="listPrice">定價 <span class="required">*</span></label>
+                  <!-- decimal(9,0) -> whole numbers only. -->
+                  <p-inputNumber
+                    inputId="listPrice"
+                    formControlName="listPrice"
+                    [min]="0"
+                    [maxFractionDigits]="0"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('listPrice')) {
+                    <small class="field-error">定價為必填。</small>
+                  }
+                </div>
+
+                <div class="field">
+                  <label for="learningCredit">點數 <span class="required">*</span></label>
+                  <!-- decimal(9,1) -> exactly one decimal place. -->
+                  <p-inputNumber
+                    inputId="learningCredit"
+                    formControlName="learningCredit"
+                    [useGrouping]="false"
+                    [min]="0"
+                    [minFractionDigits]="1"
+                    [maxFractionDigits]="1"
+                    styleClass="w-full"
+                  />
+                  @if (invalid('learningCredit')) {
+                    <small class="field-error">點數為必填。</small>
+                  }
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- 課程內容 -->
+            <p-tabpanel value="content">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="material">教材</label>
+                  <textarea
+                    id="material"
+                    pTextarea
+                    formControlName="material"
+                    rows="2"
+                    maxlength="500"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="objective">課程目標</label>
+                  <textarea
+                    id="objective"
+                    pTextarea
+                    formControlName="objective"
+                    rows="4"
+                    maxlength="4000"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="target">適合對象</label>
+                  <textarea
+                    id="target"
+                    pTextarea
+                    formControlName="target"
+                    rows="2"
+                    maxlength="500"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="prerequisites">先備知識</label>
+                  <textarea
+                    id="prerequisites"
+                    pTextarea
+                    formControlName="prerequisites"
+                    rows="4"
+                    maxlength="4000"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="outline">課程大綱</label>
+                  <!-- nvarchar(max) -> no maxlength. -->
+                  <textarea id="outline" pTextarea formControlName="outline" rows="8"></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="towardCertOrExam">考試／認證說明</label>
+                  <!-- nvarchar(max) -> no maxlength. -->
+                  <textarea
+                    id="towardCertOrExam"
+                    pTextarea
+                    formControlName="towardCertOrExam"
+                    rows="6"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="note">備註</label>
+                  <textarea
+                    id="note"
+                    pTextarea
+                    formControlName="note"
+                    rows="3"
+                    maxlength="4000"
+                  ></textarea>
+                </div>
+
+                <div class="field">
+                  <label for="otherInfo">其他資訊</label>
+                  <textarea
+                    id="otherInfo"
+                    pTextarea
+                    formControlName="otherInfo"
+                    rows="3"
+                    maxlength="4000"
+                  ></textarea>
+                </div>
+              </div>
+            </p-tabpanel>
+
+            <!-- 關聯 -->
+            <p-tabpanel value="relations">
+              <div class="form-grid">
+                <div class="field">
+                  <label for="certificationPkids">認證</label>
+                  <p-multiSelect
+                    inputId="certificationPkids"
+                    [options]="certificationSelectOptions"
+                    formControlName="certificationPkids"
+                    optionLabel="label"
+                    optionValue="pkid"
+                    placeholder="選擇認證（可複選）"
+                    display="chip"
+                    [filter]="true"
+                    filterBy="label"
+                    [maxSelectedLabels]="9999"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                </div>
+
+                <div class="field">
+                  <label for="jobCategoryPkids">職務類別</label>
+                  <p-multiSelect
+                    inputId="jobCategoryPkids"
+                    [options]="jobCategorySelectOptions"
+                    formControlName="jobCategoryPkids"
+                    optionLabel="label"
+                    optionValue="pkid"
+                    placeholder="選擇職務類別（可複選）"
+                    display="chip"
+                    [filter]="true"
+                    filterBy="label"
+                    [maxSelectedLabels]="9999"
+                    appendTo="body"
+                    styleClass="w-full"
+                  />
+                </div>
+              </div>
+            </p-tabpanel>
+          </p-tabpanels>
+        </p-tabs>
+      </div>
+    }
+  </form>
+</div>

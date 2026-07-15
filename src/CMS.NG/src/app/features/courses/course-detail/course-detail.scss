@@ -1,0 +1,78 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+/* 基本資料 puts the QR beside the field list, and below it once the row can no longer hold both. */
+.basic-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.basic-layout .detail-grid {
+  flex: 1 1 24rem;
+}
+
+.qr-panel {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.qr-panel__image {
+  display: block;
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.qr-panel__title {
+  font-weight: 600;
+  color: #1f2937;
+  word-break: break-all;
+  text-align: center;
+  max-width: 220px;
+}
+
+.fk-link {
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.fk-link:hover {
+  text-decoration: underline;
+}
+
+.fk-link i {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+/* Long-form content columns keep their line breaks. */
+.pre-wrap {
+  white-space: pre-wrap;
+}
+
+.tag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.tag {
+  background: #ecfdf5;
+  color: #0f766e;
+  border-radius: 999px;
+  padding: 0.15rem 0.6rem;
+  font-size: 0.8rem;
+}

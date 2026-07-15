@@ -1,9 +1,16 @@
 using CMS.API.Data;
 using CMS.API.Repositories;
+using Dapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
 const string CorsPolicy = "LocalhostCors";
+
+// Dapper type handlers. Course.ScheduleOn/ScheduleOff are SQL `date`, and neither Dapper 2.1.79
+// nor Microsoft.Data.SqlClient 7.0.2 maps DateOnly natively (reads throw DataException, parameters
+// throw NotSupportedException) — so this registration is required, not defensive. It covers both
+// DateOnly and DateOnly? (the nullable date-range query filters).
+SqlMapper.AddTypeHandler(new DateOnlyTypeHandler());
 
 // --- Services ---------------------------------------------------------------
 builder.Services.AddControllers();
@@ -35,6 +42,7 @@ builder.Services.AddScoped<IAppRoleRepository, AppRoleRepository>();
 builder.Services.AddScoped<IPublishStatusRepository, PublishStatusRepository>();
 builder.Services.AddScoped<IPartnerRepository, PartnerRepository>();
 builder.Services.AddScoped<ICourseGroupRepository, CourseGroupRepository>();
+builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<ILookupRepository, LookupRepository>();
 
 var app = builder.Build();

@@ -57,4 +57,35 @@ public sealed class LookupRepository : ILookupRepository
             ORDER BY g.pkid ASC;";
         return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
     }
+
+    public async Task<IEnumerable<LookupItem>> GetCertificationsAsync(CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        // Certification.Title is nchar(100) -> RTRIM is mandatory, otherwise every label carries
+        // ~50 trailing spaces (verified in the dev DB: values come back padded to a full 100 chars).
+        // Title alone is ambiguous across partners, so the label is prefixed with the partner name.
+        // ORDER BY is qualified (p.DisplayOrder / c.Title): an unqualified "pkid" would bind to the
+        // varchar select-list alias and sort lexicographically.
+        const string sql = @"
+            SELECT CAST(c.pkid AS varchar(10)) AS Pkid,
+                   (p.Name + ' - ' + RTRIM(c.Title)) AS Label
+            FROM Certification c
+            INNER JOIN Partner p ON p.pkid = c.Partner_pkid
+            ORDER BY p.DisplayOrder ASC, c.Title ASC;";
+        return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
+    }
+
+    public async Task<IEnumerable<LookupItem>> GetJobCategoriesAsync(CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        // Description is nvarchar(70) -> no RTRIM needed.
+        // ORDER BY must be qualified (j.pkid): an unqualified "pkid" would bind to the varchar
+        // select-list alias and sort lexicographically (1, 10, 11, 2).
+        const string sql = @"
+            SELECT CAST(j.pkid AS varchar(6)) AS Pkid, j.Description AS Label
+            FROM JobCategory j
+            ORDER BY j.pkid ASC;";
+        return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
+    }
+
 }

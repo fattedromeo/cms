@@ -1,0 +1,77 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+/* Marks a tab whose fields failed validation — without this, tabs would hide the errors. */
+.tab-error {
+  color: #dc2626;
+  font-size: 0.8rem;
+  margin-left: 0.35rem;
+}
+
+/* Two-column field grid for the short fields; .field--full spans both. */
+.form-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 1.25rem;
+}
+
+.form-grid--2 .field--full {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .form-grid--2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+}
+
+.checkbox-label {
+  font-weight: 400;
+  color: #475569;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+/* Full-width PrimeNG inputs inside form fields */
+:host ::ng-deep .w-full,
+:host ::ng-deep .p-inputnumber,
+:host ::ng-deep .p-select,
+:host ::ng-deep .p-multiselect,
+:host ::ng-deep .p-datepicker {
+  width: 100%;
+}
+
+:host ::ng-deep .p-inputnumber-input,
+:host ::ng-deep .p-datepicker-input {
+  width: 100%;
+}
+
+input.ng-invalid-visual {
+  border-color: #dc2626;
+}
+
+.field-hint {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}
+
+/* Wrap multiselect chips onto multiple lines */
+:host ::ng-deep .p-multiselect-label {
+  white-space: normal;
+}

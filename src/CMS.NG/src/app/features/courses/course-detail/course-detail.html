@@ -1,0 +1,170 @@
+<div class="page">
+  <div class="card page-header">
+    <div class="page-header__titles">
+      <h1 class="page-header__title">檢視課程</h1>
+      @if (course()) {
+        <span class="page-header__subtitle">{{ course()!.courseId }} {{ course()!.title }}</span>
+      }
+    </div>
+    <div class="page-header__actions">
+      <p-button
+        label="返回"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="back()"
+      />
+      @if (course()) {
+        <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card status-card">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card">查無此課程。</div>
+  } @else if (course(); as c) {
+    <div class="card">
+      <h2 class="section-title">基本資料</h2>
+      <div class="basic-layout">
+        <dl class="detail-grid">
+          <dt>主代碼</dt>
+          <dd>{{ c.pkid }}</dd>
+          <dt>顯示順序</dt>
+          <dd>{{ c.displayOrder }}</dd>
+          <dt>簡介代碼</dt>
+          <dd>{{ c.courseId }}</dd>
+          <dt>科目代碼</dt>
+          <dd>{{ c.prodCourseId }}</dd>
+          <dt>課程名稱</dt>
+          <dd>{{ c.title }}</dd>
+          <dt>正式課程名稱</dt>
+          <dd>{{ c.officialTitle || '—' }}</dd>
+          <dt>友善網址</dt>
+          <dd>{{ c.friendlyUrl }}</dd>
+        </dl>
+
+        <!-- QR to the public course page. The caption here is HTML; the downloaded PNG has its
+             own copy drawn onto the canvas. -->
+        <figure class="qr-panel">
+          @if (qrDataUrl()) {
+            <img class="qr-panel__image" [src]="qrDataUrl()" [alt]="'課程 ' + c.courseId + ' QR Code'" />
+          }
+          <figcaption class="qr-panel__title">{{ c.courseId }}</figcaption>
+          <p-button
+            label="下載 QR Code"
+            icon="pi pi-download"
+            severity="secondary"
+            [outlined]="true"
+            size="small"
+            [disabled]="!qrDataUrl()"
+            (onClick)="downloadQr()"
+          />
+        </figure>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">上架與價格</h2>
+      <dl class="detail-grid">
+        <!-- Foreign-Primary links: all three target features exist, so these are wired. -->
+        <dt>原廠</dt>
+        <dd>
+          @if (c.partner) {
+            <a [routerLink]="['/partners', c.partner.pkid]" class="fk-link">
+              {{ c.partner.name }} <i class="pi pi-external-link"></i>
+            </a>
+          } @else {
+            —
+          }
+        </dd>
+        <dt>課程群組</dt>
+        <dd>
+          <!-- Nullable FK: only link when a group is set. -->
+          @if (c.courseGroup) {
+            <a [routerLink]="['/course-groups', c.courseGroup.pkid]" class="fk-link">
+              {{ c.courseGroup.description }} <i class="pi pi-external-link"></i>
+            </a>
+          } @else {
+            —
+          }
+        </dd>
+        <dt>上架狀態</dt>
+        <dd>
+          @if (c.publishStatus) {
+            <a [routerLink]="['/publish-statuses', c.publishStatus.pkid]" class="fk-link">
+              {{ c.publishStatus.description }} <i class="pi pi-external-link"></i>
+            </a>
+          } @else {
+            —
+          }
+        </dd>
+        <dt>上架日期</dt>
+        <dd>{{ c.scheduleOn }}</dd>
+        <dt>下架日期</dt>
+        <dd>{{ c.scheduleOff }}</dd>
+        <dt>時數</dt>
+        <dd>{{ c.hour }}</dd>
+        <dt>定價</dt>
+        <dd>{{ c.listPrice | number }}</dd>
+        <dt>點數</dt>
+        <dd>{{ c.learningCredit }}</dd>
+        <dt>允許重聽</dt>
+        <dd>{{ c.canRepeat ? '是' : '否' }}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">課程內容</h2>
+      <dl class="detail-grid">
+        <dt>教材</dt>
+        <dd class="pre-wrap">{{ c.material || '—' }}</dd>
+        <dt>課程目標</dt>
+        <dd class="pre-wrap">{{ c.objective || '—' }}</dd>
+        <dt>適合對象</dt>
+        <dd class="pre-wrap">{{ c.target || '—' }}</dd>
+        <dt>先備知識</dt>
+        <dd class="pre-wrap">{{ c.prerequisites || '—' }}</dd>
+        <dt>課程大綱</dt>
+        <dd class="pre-wrap">{{ c.outline || '—' }}</dd>
+        <dt>考試／認證說明</dt>
+        <dd class="pre-wrap">{{ c.towardCertOrExam || '—' }}</dd>
+        <dt>備註</dt>
+        <dd class="pre-wrap">{{ c.note || '—' }}</dd>
+        <dt>其他資訊</dt>
+        <dd class="pre-wrap">{{ c.otherInfo || '—' }}</dd>
+      </dl>
+    </div>
+
+    <div class="card">
+      <h2 class="section-title">關聯</h2>
+      <dl class="detail-grid">
+        <dt>認證</dt>
+        <dd>
+          @if (certificationLabels().length) {
+            <ul class="tag-list">
+              @for (label of certificationLabels(); track label) {
+                <li class="tag">{{ label }}</li>
+              }
+            </ul>
+          } @else {
+            —
+          }
+        </dd>
+        <dt>職務類別</dt>
+        <dd>
+          @if (jobCategoryLabels().length) {
+            <ul class="tag-list">
+              @for (label of jobCategoryLabels(); track label) {
+                <li class="tag">{{ label }}</li>
+              }
+            </ul>
+          } @else {
+            —
+          }
+        </dd>
+      </dl>
+    </div>
+  }
+</div>

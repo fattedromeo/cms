@@ -1,0 +1,112 @@
+// Layout mirrors ui-query.spec.png: a tab strip, a centred week navigator, then one banded
+// section per day holding three fixed slot rows.
+.promo-grid {
+  padding: 1rem;
+
+  &__weeknav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 0.75rem 0 1rem;
+  }
+
+  &__weekbtn {
+    background: none;
+    border: none;
+    padding: 0.15rem 0.4rem;
+    font: inherit;
+    font-weight: 600;
+    color: var(--p-primary-color, #2563eb);
+    cursor: pointer;
+
+    &:hover {
+      color: var(--p-primary-hover-color, #1d4ed8);
+    }
+  }
+
+  &__weeklabel {
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  &__loading {
+    padding: 0.5rem 0;
+    color: var(--p-text-muted-color, #6b7280);
+  }
+}
+
+.promo-day {
+  margin-bottom: 0.75rem;
+
+  &__header {
+    background: var(--p-surface-200, #e5e7eb);
+    color: var(--p-text-color, #111827);
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+    padding: 0.35rem 0.6rem;
+  }
+}
+
+.promo-row {
+  display: grid;
+  // slot | + | -- | Edit | Copy/Paste | Delete | code | topic | description
+  grid-template-columns: 1.25rem auto auto auto auto auto 21rem 21rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0.6rem;
+
+  &__slot {
+    font-size: 0.8rem;
+    color: var(--p-text-muted-color, #6b7280);
+  }
+
+  &__link {
+    background: none;
+    border: none;
+    padding: 0 0.1rem;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--p-primary-color, #2563eb);
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: var(--p-primary-hover-color, #1d4ed8);
+    }
+
+    &:disabled {
+      color: var(--p-text-muted-color, #9ca3af);
+      text-decoration: none;
+      cursor: default;
+    }
+
+    &--danger {
+      color: var(--p-red-500, #dc2626);
+
+      &:hover:not(:disabled) {
+        color: var(--p-red-600, #b91c1c);
+      }
+    }
+  }
+
+  // The value columns are read-only text drawn to look like the mockup's boxed inputs.
+  &__cell {
+    border: 1px solid var(--p-content-border-color, #d1d5db);
+    background: var(--p-content-background, #fff);
+    border-radius: 2px;
+    padding: 0.15rem 0.4rem;
+    font-size: 0.8rem;
+    min-height: 1.5rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+// Keep the grid from forcing the page to scroll sideways on a narrow viewport.
+:host {
+  display: block;
+  overflow-x: auto;
+}

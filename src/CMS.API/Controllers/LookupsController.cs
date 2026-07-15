@@ -54,4 +54,16 @@ public class LookupsController : ControllerBase
     [ProducesResponseType(typeof(IEnumerable<LookupItem>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<LookupItem>>> GetJobCategories(CancellationToken ct)
         => Ok(await _repository.GetJobCategoriesAsync(ct));
+
+    /// <summary>TrainingCenter options for the FeaturedPromoItem week-grid tabs (label = Name).</summary>
+    [HttpGet("training-centers")]
+    [ProducesResponseType(typeof(IEnumerable<LookupItem>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<LookupItem>>> GetTrainingCenters(CancellationToken ct)
+        => Ok(await _repository.GetTrainingCentersAsync(ct));
+
+    /// <summary>Promotion2 options for the PromoCode lookup (label = PromoCode).</summary>
+    [HttpGet("promotions")]
+    [ProducesResponseType(typeof(IEnumerable<LookupItem>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<LookupItem>>> GetPromotions(CancellationToken ct)
+        => Ok(await _repository.GetPromotionsAsync(ct));
 }

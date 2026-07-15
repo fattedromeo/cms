@@ -31,7 +31,19 @@ export class App {
    * first feature; the remaining groups mirror the target UI as placeholders.
    */
   protected readonly navGroups = signal<NavGroup[]>([
-    { label: '首頁管理', labelEn: 'Home', icon: 'pi pi-home', children: [] },
+    {
+      label: '首頁管理',
+      labelEn: 'Home',
+      icon: 'pi pi-home',
+      children: [
+        {
+          label: '上稿作業',
+          labelEn: 'FeaturedPromoItem',
+          icon: 'pi pi-calendar',
+          route: '/featured-promo-items',
+        },
+      ],
+    },
     {
       label: '課程管理',
       labelEn: 'Course',

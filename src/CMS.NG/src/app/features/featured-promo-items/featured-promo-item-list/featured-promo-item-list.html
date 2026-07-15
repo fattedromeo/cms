@@ -1,0 +1,134 @@
+<p-toast />
+<p-confirmDialog />
+
+<div class="promo-grid">
+  <!-- Tabs = TrainingCenter. Tabs.value is a ModelSignal, so bind [value] + (valueChange). -->
+  @if (tabOptions().length) {
+    <p-tabs [value]="activeTcPkid() ?? tabOptions()[0].pkid" (valueChange)="onTabChange($event)">
+      <p-tablist>
+        @for (tc of tabOptions(); track tc.pkid) {
+          <p-tab [value]="tc.pkid">{{ tc.label }}</p-tab>
+        }
+      </p-tablist>
+    </p-tabs>
+  }
+
+  <div class="promo-grid__weeknav">
+    <button
+      type="button"
+      class="promo-grid__weekbtn"
+      data-testid="prev-week"
+      (click)="prevWeek()"
+      aria-label="上一週"
+    >
+      &lt;&lt;--
+    </button>
+    <span class="promo-grid__weeklabel" data-testid="week-label">{{ weekLabel() }}</span>
+    <button
+      type="button"
+      class="promo-grid__weekbtn"
+      data-testid="next-week"
+      (click)="nextWeek()"
+      aria-label="下一週"
+    >
+      --&gt;&gt;
+    </button>
+  </div>
+
+  @if (loading()) {
+    <div class="promo-grid__loading">載入中…</div>
+  }
+
+  @for (day of days(); track day.iso) {
+    <section class="promo-day" [attr.data-testid]="'day-' + day.iso">
+      <h2 class="promo-day__header">{{ day.label }}</h2>
+
+      @for (row of day.rows; track row.slot) {
+        <div class="promo-row" [attr.data-testid]="'slot-' + day.iso + '-' + row.slot">
+          <span class="promo-row__slot">{{ row.slot }}</span>
+
+          <!-- 「+」 moves DOWN the list (slot 1 -> 2); 「--」 moves UP (slot 2 -> 1). -->
+          <button
+            type="button"
+            class="promo-row__link"
+            data-testid="move-down"
+            [disabled]="!canMoveDown(row)"
+            (click)="move(row.item!, 'down')"
+            pTooltip="往下移一欄"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            class="promo-row__link"
+            data-testid="move-up"
+            [disabled]="!canMoveUp(row)"
+            (click)="move(row.item!, 'up')"
+            pTooltip="往上移一欄"
+          >
+            --
+          </button>
+
+          <button
+            type="button"
+            class="promo-row__link"
+            data-testid="edit"
+            (click)="openPanel(day.iso, row.slot)"
+          >
+            Edit
+          </button>
+
+          @if (row.item) {
+            <button
+              type="button"
+              class="promo-row__link"
+              data-testid="copy"
+              (click)="copy(row.item)"
+            >
+              Copy
+            </button>
+            <button
+              type="button"
+              class="promo-row__link promo-row__link--danger"
+              data-testid="delete"
+              (click)="remove(row.item)"
+            >
+              Delete
+            </button>
+          } @else {
+            <!-- An empty cell offers Paste instead of Copy/Delete (ui-new.spec.png). -->
+            <button
+              type="button"
+              class="promo-row__link"
+              data-testid="paste"
+              [disabled]="!clipboard()"
+              (click)="paste(day.iso, row.slot)"
+              [pTooltip]="clipboard() ? '貼上「' + clipboard()!.promoCode + '」' : '尚未複製任何資料'"
+            >
+              Paste
+            </button>
+          }
+
+          <span class="promo-row__cell promo-row__cell--code">{{
+            row.item?.promotion?.promoCode ?? ''
+          }}</span>
+          <span class="promo-row__cell">{{ row.item?.topic ?? '' }}</span>
+          <span class="promo-row__cell promo-row__cell--desc">{{ row.item?.description ?? '' }}</span>
+        </div>
+
+        @if (isEditing(day.iso, row.slot)) {
+          <app-featured-promo-item-form
+            [scheduleOn]="day.iso"
+            [trainingCenterPkid]="activeTcPkid()!"
+            [slot]="row.slot"
+            [item]="row.item"
+            [seed]="pasting() ? clipboard() : null"
+            [promoOptions]="promoOptions()"
+            (saved)="onSaved($event)"
+            (cancelled)="closePanel()"
+          />
+        }
+      }
+    </section>
+  }
+</div>

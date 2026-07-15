@@ -140,6 +140,15 @@ export const routes: Routes = [
     ],
   },
   {
+    // 上稿作業 — a single week-grid page, so no 'new' / ':id' children: the grid is the detail
+    // view and the Edit panel opens inline. See spec/custom/FeaturedPromoItem/FeaturedPromoItem.md.
+    path: 'featured-promo-items',
+    loadComponent: () =>
+      import(
+        '@features/featured-promo-items/featured-promo-item-list/featured-promo-item-list'
+      ).then((m) => m.FeaturedPromoItemList),
+  },
+  {
     path: 'publish-statuses',
     children: [
       {

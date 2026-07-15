@@ -29,4 +29,14 @@ public interface ILookupRepository
 
     /// <summary>JobCategory options for the Course N-N picker. Label = Description.</summary>
     Task<IEnumerable<LookupItem>> GetJobCategoriesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// TrainingCenter options for the FeaturedPromoItem week-grid tabs. Label = Name.
+    /// </summary>
+    Task<IEnumerable<LookupItem>> GetTrainingCentersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Promotion2 options for the FeaturedPromoItem PromoCode lookup. Label = PromoCode.
+    /// </summary>
+    Task<IEnumerable<LookupItem>> GetPromotionsAsync(CancellationToken ct = default);
 }

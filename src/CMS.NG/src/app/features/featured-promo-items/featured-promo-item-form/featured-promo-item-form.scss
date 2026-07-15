@@ -1,0 +1,64 @@
+// The panel floats inside a grid slot, drawn as a heavy-bordered card like ui-update.spec.png.
+.promo-form {
+  border: 2px solid var(--p-content-border-color, #1f2937);
+  background: var(--p-content-background, #fff);
+  padding: 0.85rem 1rem;
+  margin: 0.25rem 0 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  &__row {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  &__label {
+    font-size: 0.85rem;
+    color: var(--p-text-muted-color, #4b5563);
+    justify-self: start;
+  }
+
+  &__input {
+    width: 100%;
+  }
+
+  &__error {
+    grid-column: 2;
+    color: var(--p-red-500, #ef4444);
+    font-size: 0.75rem;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 3rem;
+    justify-content: center;
+    padding-top: 0.25rem;
+  }
+
+  // Save/Cancel are underlined text links in the mockup, not buttons.
+  &__link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--p-primary-color, #2563eb);
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--p-primary-hover-color, #1d4ed8);
+    }
+  }
+}
+
+// p-autocomplete renders its own wrapper; stretch it to the grid cell.
+:host ::ng-deep .promo-form__autocomplete {
+  width: 100%;
+
+  .p-autocomplete-input {
+    width: 100%;
+  }
+}

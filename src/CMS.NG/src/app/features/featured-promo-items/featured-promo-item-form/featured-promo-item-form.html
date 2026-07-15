@@ -1,0 +1,61 @@
+<form class="promo-form" [formGroup]="form" (ngSubmit)="save()">
+  <div class="promo-form__row">
+    <label class="promo-form__label" for="promoCode">PromoCode:</label>
+    <p-autocomplete
+      inputId="promoCode"
+      formControlName="promotion"
+      [suggestions]="suggestions()"
+      (completeMethod)="filterPromos($event)"
+      optionLabel="label"
+      [forceSelection]="true"
+      [dropdown]="true"
+      [showClear]="true"
+      [delay]="150"
+      [minLength]="1"
+      appendTo="body"
+      placeholder="輸入活動代碼查詢"
+      styleClass="promo-form__autocomplete"
+      [class.ng-invalid]="invalid('promotion')"
+    />
+    @if (invalid('promotion')) {
+      <small class="promo-form__error">請選擇有效的活動代碼。</small>
+    }
+  </div>
+
+  <div class="promo-form__row">
+    <label class="promo-form__label" for="topic">Topic:</label>
+    <input
+      pInputText
+      id="topic"
+      type="text"
+      formControlName="topic"
+      maxlength="100"
+      class="promo-form__input"
+    />
+    @if (invalid('topic')) {
+      <small class="promo-form__error">請輸入標題（100 字以內）。</small>
+    }
+  </div>
+
+  <div class="promo-form__row">
+    <label class="promo-form__label" for="description">Description:</label>
+    <input
+      pInputText
+      id="description"
+      type="text"
+      formControlName="description"
+      maxlength="300"
+      class="promo-form__input"
+    />
+    @if (invalid('description')) {
+      <small class="promo-form__error">請輸入說明（300 字以內）。</small>
+    }
+  </div>
+
+  <div class="promo-form__actions">
+    <button type="submit" class="promo-form__link" data-testid="save">Save</button>
+    <button type="button" class="promo-form__link" data-testid="cancel" (click)="cancel()">
+      Cancel
+    </button>
+  </div>
+</form>

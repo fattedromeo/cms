@@ -101,4 +101,34 @@ public sealed class LookupRepository : ILookupRepository
         return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
     }
 
+    public async Task<IEnumerable<LookupItem>> GetTrainingCentersAsync(CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        // Name is nvarchar(10) -> no RTRIM needed.
+        // DisplayOrder IS a genuine global ordering here, unlike Course's: all 5 rows carry a
+        // distinct value (1..5), so there are no ties to resolve. Verified in the dev DB.
+        // ORDER BY must be qualified (t.DisplayOrder): the select list casts pkid to varchar, and
+        // an unqualified column would risk binding to that alias and sorting lexicographically.
+        const string sql = @"
+            SELECT CAST(t.pkid AS varchar(6)) AS Pkid, t.Name AS Label
+            FROM TrainingCenter t
+            ORDER BY t.DisplayOrder ASC;";
+        return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
+    }
+
+    public async Task<IEnumerable<LookupItem>> GetPromotionsAsync(CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        // PromoCode is nvarchar(30) and UNIQUE (IX_Promotion2_UniquePromoCode) -> it is a stable,
+        // unambiguous label and a stable sort key. 1,157 rows in the dev DB, small enough to ship
+        // whole and filter client-side in the type-ahead.
+        // NOT filtered by PublishStatus: the spec puts no restriction on the choice, and existing
+        // FeaturedPromoItem rows reference promos of every status (draft/published/discontinued).
+        // ORDER BY is qualified for the usual alias-shadowing reason.
+        const string sql = @"
+            SELECT CAST(p.pkid AS varchar(10)) AS Pkid, p.PromoCode AS Label
+            FROM Promotion2 p
+            ORDER BY p.PromoCode ASC;";
+        return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
+    }
 }

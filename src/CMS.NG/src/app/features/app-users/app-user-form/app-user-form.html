@@ -1,0 +1,124 @@
+<div class="page">
+  <p-toast />
+
+  <form [formGroup]="form" (ngSubmit)="save()">
+    <div class="card page-header">
+      <div class="page-header__titles">
+        <h1 class="page-header__title">{{ isEdit() ? '編輯使用者' : '新增使用者' }}</h1>
+      </div>
+      <div class="page-header__actions">
+        <p-button
+          label="取消"
+          icon="pi pi-times"
+          severity="secondary"
+          [outlined]="true"
+          type="button"
+          (onClick)="cancel()"
+        />
+        <p-button
+          label="儲存"
+          icon="pi pi-check"
+          severity="success"
+          type="submit"
+          [loading]="saving()"
+        />
+      </div>
+    </div>
+
+    @if (loading()) {
+      <div class="card status-card">載入中…</div>
+    } @else {
+      <div class="card">
+        <h2 class="section-title">使用者資料</h2>
+        <div class="form-grid">
+          <div class="field">
+            <label for="userId">使用者代碼 <span class="required">*</span></label>
+            <input
+              id="userId"
+              type="text"
+              pInputText
+              formControlName="userId"
+              maxlength="200"
+              placeholder="請輸入使用者代碼（電子郵件）"
+              [class.ng-invalid-visual]="invalid('userId')"
+            />
+            @if (isEdit()) {
+              <small class="field-hint">使用者代碼為識別鍵，不可修改。</small>
+            }
+            @if (invalid('userId')) {
+              <small class="field-error">使用者代碼為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="userName">使用者名稱 <span class="required">*</span></label>
+            <input
+              id="userName"
+              type="text"
+              pInputText
+              formControlName="userName"
+              maxlength="200"
+              [class.ng-invalid-visual]="invalid('userName')"
+            />
+            @if (invalid('userName')) {
+              <small class="field-error">使用者名稱為必填。</small>
+            }
+          </div>
+
+          <div class="field">
+            <label for="isActive">啟用</label>
+            <div class="checkbox-row">
+              <p-checkbox inputId="isActive" formControlName="isActive" [binary]="true" />
+              <label for="isActive" class="checkbox-label">允許此帳號登入</label>
+            </div>
+          </div>
+
+          <!-- No password field, in either mode. On create the API hashes the system default;
+               update never touches the hash. -->
+          @if (isEdit()) {
+            <div class="field">
+              <label>密碼更新時間</label>
+              @if (passwordUpdatedTime()) {
+                <span class="readonly-value">{{
+                  passwordUpdatedTime()! + 'Z' | date: 'yyyy/MM/dd HH:mm'
+                }}</span>
+              } @else {
+                <span class="readonly-value muted">未變更（仍為系統預設密碼）</span>
+              }
+              <small class="field-hint">密碼不可於此頁編輯。</small>
+            </div>
+          } @else {
+            <div class="field">
+              <div class="password-note">
+                <i class="pi pi-info-circle"></i>
+                新帳號將使用系統預設密碼，請提醒使用者首次登入後變更。
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="card roles-card">
+        <h2 class="section-title">角色</h2>
+        <div class="form-grid">
+          <div class="field">
+            <!-- optionValue="pkid" carries RoleId (a string) — no numeric conversion needed. -->
+            <p-multiSelect
+              [options]="roleOptions()"
+              formControlName="roleIds"
+              optionLabel="label"
+              optionValue="pkid"
+              placeholder="選擇角色（可複選）"
+              display="chip"
+              [filter]="true"
+              filterBy="label"
+              [maxSelectedLabels]="9999"
+              appendTo="body"
+              styleClass="w-full"
+            />
+          </div>
+        </div>
+      </div>
+    }
+  </form>
+</div>

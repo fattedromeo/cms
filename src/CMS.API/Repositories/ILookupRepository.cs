@@ -7,6 +7,12 @@ public interface ILookupRepository
     /// <summary>AppUser options for the AppRole users picker. Label = "UserName (UserId)".</summary>
     Task<IEnumerable<LookupItem>> GetAppUsersAsync(CancellationToken ct = default);
 
+    /// <summary>
+    /// AppRole options for the AppUser roles picker. Pkid carries RoleId (the FK target), not the
+    /// surrogate pkid. Label = RoleName.
+    /// </summary>
+    Task<IEnumerable<LookupItem>> GetAppRolesAsync(CancellationToken ct = default);
+
     /// <summary>PublishStatus options for FK pickers (Course, Promotion2). Label = Description.</summary>
     Task<IEnumerable<LookupItem>> GetPublishStatusesAsync(CancellationToken ct = default);
 

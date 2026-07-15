@@ -19,6 +19,12 @@ public class LookupsController : ControllerBase
     public async Task<ActionResult<IEnumerable<LookupItem>>> GetAppUsers(CancellationToken ct)
         => Ok(await _repository.GetAppUsersAsync(ct));
 
+    /// <summary>AppRole options for the AppUser picker (pkid = RoleId, label = RoleName).</summary>
+    [HttpGet("app-roles")]
+    [ProducesResponseType(typeof(IEnumerable<LookupItem>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<LookupItem>>> GetAppRoles(CancellationToken ct)
+        => Ok(await _repository.GetAppRolesAsync(ct));
+
     /// <summary>PublishStatus options for pickers (label = Description).</summary>
     [HttpGet("publish-statuses")]
     [ProducesResponseType(typeof(IEnumerable<LookupItem>), StatusCodes.Status200OK)]

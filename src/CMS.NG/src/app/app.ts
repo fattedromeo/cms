@@ -54,7 +54,7 @@ export class App {
       expanded: true,
       children: [
         { label: '角色', labelEn: 'AppRole', icon: 'pi pi-id-card', route: '/app-roles' },
-        { label: '使用者', labelEn: 'AppUser', icon: 'pi pi-user', disabled: true },
+        { label: '使用者', labelEn: 'AppUser', icon: 'pi pi-user', route: '/app-users' },
         {
           label: '發布狀態',
           labelEn: 'PublishStatus',

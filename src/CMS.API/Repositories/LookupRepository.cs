@@ -20,6 +20,19 @@ public sealed class LookupRepository : ILookupRepository
         return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
     }
 
+    public async Task<IEnumerable<LookupItem>> GetAppRolesAsync(CancellationToken ct = default)
+    {
+        using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        // Pkid carries RoleId (the clustered PK / FK target), NOT the surrogate r.pkid — the
+        // AppUserRole junction references RoleId. RoleId is already nvarchar, so there is no
+        // CAST-to-varchar and therefore no ORDER BY alias-shadowing hazard; still qualified.
+        const string sql = @"
+            SELECT r.RoleId AS Pkid, r.RoleName AS Label
+            FROM AppRole r
+            ORDER BY r.RoleId ASC;";
+        return await conn.QueryAsync<LookupItem>(new CommandDefinition(sql, cancellationToken: ct));
+    }
+
     public async Task<IEnumerable<LookupItem>> GetPublishStatusesAsync(CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);

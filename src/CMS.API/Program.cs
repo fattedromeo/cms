@@ -39,6 +39,10 @@ builder.Services.AddCors(options =>
 // Data access
 builder.Services.AddSingleton<IDbConnectionFactory, SqlConnectionFactory>();
 builder.Services.AddScoped<IAppRoleRepository, AppRoleRepository>();
+builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
+// Server-side only: reads SysConfig['appConfig'].defaultPassword. Never exposed via a controller —
+// the same JSON holds symmetricSecurityKey (a JWT signing secret).
+builder.Services.AddScoped<ISysConfigRepository, SysConfigRepository>();
 builder.Services.AddScoped<IPublishStatusRepository, PublishStatusRepository>();
 builder.Services.AddScoped<IPartnerRepository, PartnerRepository>();
 builder.Services.AddScoped<ICourseGroupRepository, CourseGroupRepository>();

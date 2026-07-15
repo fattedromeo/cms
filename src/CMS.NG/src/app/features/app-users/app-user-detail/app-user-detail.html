@@ -1,0 +1,67 @@
+<div class="page">
+  <div class="card page-header">
+    <div class="page-header__titles">
+      <h1 class="page-header__title">檢視使用者</h1>
+      @if (user()) {
+        <span class="page-header__subtitle">{{ user()!.userId }}</span>
+      }
+    </div>
+    <div class="page-header__actions">
+      <p-button
+        label="返回"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="back()"
+      />
+      @if (user()) {
+        <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="card status-card">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card">查無此使用者。</div>
+  } @else if (user(); as u) {
+    <!-- No password row of any kind: the API never sends the hash. -->
+    <div class="card">
+      <h2 class="section-title">使用者資料</h2>
+      <dl class="detail-grid">
+        <dt>主代碼</dt>
+        <dd>{{ u.pkid }}</dd>
+        <dt>使用者代碼</dt>
+        <dd>{{ u.userId }}</dd>
+        <dt>使用者名稱</dt>
+        <dd>{{ u.userName }}</dd>
+        <dt>啟用</dt>
+        <dd>{{ u.isActive ? '是' : '否' }}</dd>
+        <dt>密碼更新時間</dt>
+        <dd>
+          <!-- datetime -> append 'Z' (Kind = Unspecified). null = never changed from the default. -->
+          @if (u.passwordUpdatedTime) {
+            {{ u.passwordUpdatedTime + 'Z' | date: 'yyyy/MM/dd HH:mm' }}
+          } @else {
+            <span class="muted">未變更（仍為系統預設密碼）</span>
+          }
+        </dd>
+        <dt>角色數</dt>
+        <dd>{{ u.roleCount }}</dd>
+      </dl>
+    </div>
+
+    <div class="card roles-card">
+      <h2 class="section-title">角色</h2>
+      <div class="roles-body">
+        @if (roleLabels().length) {
+          @for (label of roleLabels(); track label) {
+            <p-tag [value]="label" severity="secondary" styleClass="role-chip" />
+          }
+        } @else {
+          <span class="muted">尚未指派角色</span>
+        }
+      </div>
+    </div>
+  }
+</div>

@@ -1,0 +1,71 @@
+.col-actions {
+  text-align: center;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  margin: 0 2px;
+  border-radius: 6px;
+  color: #64748b;
+  font-size: 0.95rem;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+}
+
+.icon-btn:hover {
+  background: #f1f5f9;
+}
+
+.icon-btn--view:hover {
+  color: #0f766e;
+}
+
+.icon-btn--edit {
+  color: #2563eb;
+}
+
+.icon-btn--edit:hover {
+  background: #eff6ff;
+}
+
+.icon-btn--delete {
+  color: #dc2626;
+}
+
+.icon-btn--delete:hover {
+  background: #fef2f2;
+}
+
+.empty-row {
+  text-align: center;
+  color: #94a3b8;
+  padding: 1.5rem 0;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+.drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-top: 0.5rem;
+}
+
+.drawer-body .field > label {
+  font-weight: 600;
+  color: #334155;
+  font-size: 0.85rem;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.drawer-body input,
+.drawer-body :where(.p-select, .p-inputtext) {
+  width: 100%;
+}

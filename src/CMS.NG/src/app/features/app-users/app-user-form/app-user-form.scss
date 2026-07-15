@@ -1,0 +1,56 @@
+.status-card {
+  padding: 2rem;
+  text-align: center;
+  color: #64748b;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+}
+
+.checkbox-label {
+  font-weight: 400;
+  color: #475569;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.readonly-value {
+  color: #1f2937;
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: #94a3b8;
+}
+
+/* Add-mode notice explaining that the password is assigned server-side. */
+.password-note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+  border-radius: 8px;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+}
+
+/* Full-width PrimeNG inputs inside form fields */
+:host ::ng-deep .w-full,
+:host ::ng-deep .p-multiselect {
+  width: 100%;
+}
+
+input.ng-invalid-visual {
+  border-color: #dc2626;
+}
+
+.field-hint {
+  color: #94a3b8;
+  font-size: 0.78rem;
+}

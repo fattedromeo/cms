@@ -150,3 +150,52 @@ body {
 ::ng-deep .p-multiselect-label {
   white-space: normal;
 }
+
+/* ------------------------------------------------------------------------- *
+ * Course flyer print (spec/course/CourseFlyer.md).
+ *
+ * @page cannot be scoped to a component or class — A4/12mm applies app-wide when printing
+ * (geometry only; the visibility/geometry rules below are flyer-scoped via body.flyer-print,
+ * which CourseFlyerPage stamps on init and removes on destroy).
+ * ------------------------------------------------------------------------- */
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  /* ⚠️ The shell's 100vh/overflow chain truncates printed content to ~one viewport — page 2
+     would silently never print while the preview looks perfect. Reset the WHOLE chain, from
+     html down to .content. :has() keeps the html reset flyer-scoped so every other route's
+     Ctrl+P output is untouched. */
+  html:has(body.flyer-print),
+  body.flyer-print,
+  body.flyer-print app-root,
+  body.flyer-print .layout,
+  body.flyer-print .content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* .layout is the sidebar+content flexbox; with the sidebar gone it must flow as a block. */
+  body.flyer-print .layout {
+    display: block !important;
+  }
+
+  /* Chrome away. p-toast lives OUTSIDE .layout (app.html) — it needs its own selector.
+     .topbar (the user/profile/logout bar) sits inside the content column and printed a
+     near-blank first page before it was listed here — found by print-PDF verification. */
+  body.flyer-print .sidebar,
+  body.flyer-print .topbar,
+  body.flyer-print p-toast,
+  body.flyer-print .no-print {
+    display: none !important;
+  }
+
+  /* Zero the content container's box so the sheet owns the page geometry. */
+  body.flyer-print .content {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+}

@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { environment } from '@env/environment';
-import { CourseService } from './course.service';
+import { CourseService, CourseWithLabels } from './course.service';
 import { Course, CourseRequest } from '@core/models/course.model';
 
 describe('CourseService', () => {
@@ -38,7 +38,7 @@ describe('CourseService', () => {
     canRepeat: true,
     partner: { pkid: 2, name: 'Oracle' },
     courseGroup: { pkid: 18, description: 'Oracle SQL/DB系列課程' },
-    publishStatus: { pkid: 3, description: '已下架' },
+    publishStatus: { pkid: 3, description: '已下架', isPublished: false },
     certificationPkids: [5],
     jobCategoryPkids: [22],
   };
@@ -149,5 +149,57 @@ describe('CourseService', () => {
     const req = httpMock.expectOne(`${lookups}/job-categories`);
     expect(req.request.method).toBe('GET');
     req.flush([{ pkid: '22', label: '資料庫管理' }]);
+  });
+
+  describe('getWithLabels', () => {
+    it('joins the course with its lookups and resolves N-N pkids to labels', () => {
+      let result: CourseWithLabels | undefined;
+      service.getWithLabels(1).subscribe((r) => (result = r));
+
+      httpMock.expectOne(`${base}/1`).flush(sample);
+      // LookupItem.pkid is a string (rule 16) — the resolver must Number() it, so the
+      // fixtures deliberately carry a non-matching sibling to prove filtering.
+      httpMock.expectOne(`${lookups}/certifications`).flush([
+        { pkid: '5', label: 'Oracle - OCP' },
+        { pkid: '6', label: 'Oracle - OCM' },
+      ]);
+      httpMock.expectOne(`${lookups}/job-categories`).flush([
+        { pkid: '22', label: '資料庫管理' },
+        { pkid: '23', label: '系統開發' },
+      ]);
+
+      expect(result).toBeDefined();
+      expect(result!.course.courseId).toBe('PLF');
+      expect(result!.certificationLabels).toEqual(['Oracle - OCP']);
+      expect(result!.jobCategoryLabels).toEqual(['資料庫管理']);
+    });
+
+    it('resolves empty label lists for a course with no N-N rows', () => {
+      let result: CourseWithLabels | undefined;
+      service.getWithLabels(1).subscribe((r) => (result = r));
+
+      httpMock
+        .expectOne(`${base}/1`)
+        .flush({ ...sample, certificationPkids: [], jobCategoryPkids: [] });
+      httpMock.expectOne(`${lookups}/certifications`).flush([{ pkid: '5', label: 'Oracle - OCP' }]);
+      httpMock.expectOne(`${lookups}/job-categories`).flush([{ pkid: '22', label: '資料庫管理' }]);
+
+      expect(result!.certificationLabels).toEqual([]);
+      expect(result!.jobCategoryLabels).toEqual([]);
+    });
+
+    it('propagates a course-load error (the caller maps it to notFound)', () => {
+      let error: unknown;
+      service.getWithLabels(999).subscribe({ error: (e) => (error = e) });
+
+      httpMock
+        .expectOne(`${base}/999`)
+        .flush('missing', { status: 404, statusText: 'Not Found' });
+      // forkJoin fails fast; the in-flight lookup GETs are cancelled with it.
+      httpMock.expectOne(`${lookups}/certifications`);
+      httpMock.expectOne(`${lookups}/job-categories`);
+
+      expect(error).toBeDefined();
+    });
   });
 });

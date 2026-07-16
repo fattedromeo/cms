@@ -121,6 +121,13 @@ export const routes: Routes = [
           import('@features/courses/course-detail/course-detail').then((m) => m.CourseDetail),
       },
       {
+        path: ':id/flyer',
+        loadComponent: () =>
+          import('@features/courses/course-flyer/course-flyer-page').then(
+            (m) => m.CourseFlyerPage,
+          ),
+      },
+      {
         path: ':id/edit',
         loadComponent: () =>
           import('@features/courses/course-form/course-form').then((m) => m.CourseForm),

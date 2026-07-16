@@ -34,7 +34,7 @@ public sealed class CourseRepository : ICourseRepository
         c.TowardCertOrExam, c.Note, c.OtherInfo, c.CanRepeat,
         p.pkid AS Pkid, p.Name,
         g.pkid AS Pkid, g.Description,
-        s.pkid AS Pkid, s.Description";
+        s.pkid AS Pkid, s.Description, s.IsPublished";
 
     // CourseGroup is LEFT JOINed: CourseGroup_pkid is nullable. Dapper yields a null nav object
     // (not a zero-filled instance) when the join misses, so the map lambda needs no null-coalescing.

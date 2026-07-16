@@ -16,6 +16,13 @@
         (onClick)="back()"
       />
       @if (course()) {
+        <p-button
+          label="列印傳單"
+          icon="pi pi-print"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="flyer()"
+        />
         <p-button label="編輯" icon="pi pi-pencil" (onClick)="edit()" />
       }
     </div>

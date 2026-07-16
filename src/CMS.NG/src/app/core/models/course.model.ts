@@ -14,6 +14,13 @@ export interface CourseGroupRef {
 export interface CoursePublishStatusRef {
   pkid: number;
   description: string;
+  /**
+   * The flyer's publish gate reads this bit — never infer from pkid (spec/course/CourseFlyer.md).
+   * Optional because the list's inline-edit relabels this nav from a LookupItem, which carries no
+   * flag (the non-admin lookup returns pkid/label only). API-resolved objects always carry it;
+   * the gate is fail-safe: `isPublished === true` is the only value that prints without warning.
+   */
+  isPublished?: boolean;
 }
 
 /** Response model for a Course (mirrors CMS.API.Models.Course). */

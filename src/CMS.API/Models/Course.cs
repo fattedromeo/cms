@@ -70,4 +70,9 @@ public sealed class CoursePublishStatusRef
 {
     public byte Pkid { get; set; }
     public string Description { get; set; } = string.Empty;
+
+    // The flyer's publish gate reads this bit rather than hardcoding status pkids: the dev DB
+    // carries a 4th published status (pkid 200) beyond 草稿/上架中/已下架, and the status list
+    // is admin-editable. Read-only projection — there is no write path for it.
+    public bool IsPublished { get; set; }
 }

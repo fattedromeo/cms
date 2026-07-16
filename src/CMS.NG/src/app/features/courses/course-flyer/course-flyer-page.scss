@@ -1,0 +1,84 @@
+/* Preview chrome around the A4 sheet. The grey backdrop is the universal print-preview idiom —
+ * it makes "this is a piece of paper" legible on screen. All of it is .no-print. */
+
+.flyer-page {
+  /* Slightly darker than the app page background so the white sheet reads as paper. */
+  background: #e4e7ee;
+  margin: -1rem;              /* bleed over .content's padding so the backdrop is edge-to-edge */
+  padding: 1rem 1rem 2rem;
+  min-height: 100%;
+}
+
+.flyer-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.flyer-toolbar__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.flyer-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--app-border);
+  border-left: 4px solid #0ea5e9;
+  border-radius: 4px;
+  padding: 0.4rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+.flyer-hint__close {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #64748b;
+  padding: 0.15rem;
+}
+
+.flyer-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.9rem;
+  color: #92400e;
+
+  .pi-exclamation-triangle {
+    color: #d97706;
+  }
+}
+
+.flyer-banner--error {
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #991b1b;
+}
+
+.flyer-hold {
+  text-align: center;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-bottom: 0.5rem;
+}
+
+@media print {
+  .flyer-page {
+    background: none;
+    margin: 0;
+    padding: 0;
+  }
+}

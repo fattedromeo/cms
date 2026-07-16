@@ -34,7 +34,7 @@ const sample: Course = {
   canRepeat: true,
   partner: { pkid: 2, name: 'Oracle' },
   courseGroup: { pkid: 18, description: 'Oracle SQL/DB系列課程' },
-  publishStatus: { pkid: 3, description: '已下架' },
+  publishStatus: { pkid: 3, description: '已下架', isPublished: false },
   certificationPkids: [],
   jobCategoryPkids: [],
 };

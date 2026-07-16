@@ -38,3 +38,9 @@ Deferred work with context. Format: What / Why / Context / Effort (human → CC)
 
 - [ ] **Install jq on this machine** — `/autoplan` cross-phase task aggregation and several gstack
   telemetry paths silently no-op without it. Effort: S. Priority: P3. (Environment, not repo.)
+
+- [ ] **Detail page renders embedded HTML fragments literally** — Course.Objective/Outline rows
+  carry `<font>`/`<sup>` markup (e.g. SSCP); the admin detail page's pre-wrap interpolation shows
+  the tags as text. The flyer strips them (`stripHtml` in course-flyer-sheet.ts — reusable).
+  Decide: strip on the detail page too, or render sanitized markup. Found during flyer print-PDF
+  verification 2026-07-16. Effort: S → S. Priority: P3.

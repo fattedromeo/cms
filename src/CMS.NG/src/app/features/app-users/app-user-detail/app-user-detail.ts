@@ -7,10 +7,11 @@ import { TagModule } from 'primeng/tag';
 
 import { AppUserService } from '@core/services/app-user.service';
 import { AppUser } from '@core/models/app-user.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-app-user-detail',
-  imports: [CommonModule, ButtonModule, TagModule],
+  imports: [CommonModule, ButtonModule, TagModule, RowAuditBadge],
   templateUrl: './app-user-detail.html',
   styleUrl: './app-user-detail.scss',
 })

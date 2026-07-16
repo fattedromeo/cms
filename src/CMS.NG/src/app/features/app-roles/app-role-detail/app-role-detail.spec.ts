@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 
 import { AppRoleDetail } from './app-role-detail';
@@ -38,6 +40,10 @@ describe('AppRoleDetail', () => {
       imports: [AppRoleDetail],
       providers: [
         provideNoopAnimations(),
+      // The 異動紀錄 badge's RowAuditService rides the real HttpClient; the testing backend
+      // satisfies the injection and leaves its GET pending (harmless here).
+      provideHttpClient(),
+      provideHttpClientTesting(),
         { provide: AppRoleService, useValue: service },
         { provide: Router, useValue: router },
         {

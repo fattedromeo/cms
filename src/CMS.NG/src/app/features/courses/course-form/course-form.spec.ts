@@ -1,6 +1,8 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { of } from 'rxjs';
 
 import { CourseForm } from './course-form';
@@ -68,6 +70,10 @@ function setup(id: string | null) {
     imports: [CourseForm],
     providers: [
       provideNoopAnimations(),
+      // The 異動紀錄 badge's RowAuditService rides the real HttpClient; the testing backend
+      // satisfies the injection and leaves its GET pending (harmless here).
+      provideHttpClient(),
+      provideHttpClientTesting(),
       { provide: CourseService, useValue: service },
       { provide: Router, useValue: router },
       {
@@ -266,4 +272,41 @@ describe('CourseForm — edit mode', () => {
     expect(arg.title).toBe('Oracle (更新)');
     expect(router.navigate).toHaveBeenCalledWith(['/courses', 1]);
   });
+});
+
+/**
+ * The form is long enough (four tabs, nvarchar(max) textareas) that 儲存 has to stay reachable
+ * without scrolling back up. Add and edit are the same component, but the toolbar's siblings differ
+ * between them (the 主代碼 field, the 載入中… branch), so assert on both rather than assume.
+ */
+describe('CourseForm — sticky action toolbar', () => {
+  beforeEach(() => TestBed.resetTestingModule());
+
+  const toolbarOf = (fixture: ComponentFixture<CourseForm>) =>
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLElement>('.page-header--sticky');
+
+  for (const [mode, id] of [
+    ['add', null],
+    ['edit', '1'],
+  ] as const) {
+    it(`pins the action toolbar to the top of the scroll area in ${mode} mode`, () => {
+      const toolbar = toolbarOf(setup(id).fixture);
+      expect(toolbar).withContext('action toolbar is rendered').not.toBeNull();
+
+      const style = getComputedStyle(toolbar!);
+      expect(style.position).toBe('sticky');
+      expect(style.top).toBe('0px');
+      // Must out-stack the form body card, which follows it in DOM order and would otherwise
+      // paint over it.
+      expect(Number(style.zIndex)).toBeGreaterThan(0);
+    });
+
+    it(`keeps 儲存 and 取消 inside the toolbar in ${mode} mode`, () => {
+      const buttons = Array.from(toolbarOf(setup(id).fixture)!.querySelectorAll('button')).map(
+        (b) => b.textContent!.trim(),
+      );
+      expect(buttons).toContain('儲存');
+      expect(buttons).toContain('取消');
+    });
+  }
 });

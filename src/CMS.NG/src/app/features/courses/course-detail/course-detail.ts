@@ -9,6 +9,7 @@ import { environment } from '@env/environment';
 import { CourseService } from '@core/services/course.service';
 import { Course } from '@core/models/course.model';
 import { LookupItem } from '@core/models/lookup-item.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 const QR_OPTIONS: QRCodeRenderersOptions = {
   errorCorrectionLevel: 'M',
@@ -21,7 +22,7 @@ const CAPTION_BAND_PX = 34;
 
 @Component({
   selector: 'app-course-detail',
-  imports: [CommonModule, RouterLink, ButtonModule],
+  imports: [CommonModule, RouterLink, ButtonModule, RowAuditBadge],
   templateUrl: './course-detail.html',
   styleUrl: './course-detail.scss',
 })

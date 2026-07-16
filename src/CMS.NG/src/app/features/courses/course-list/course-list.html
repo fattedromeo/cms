@@ -83,24 +83,253 @@
           </tr>
         </ng-template>
 
+        <!--
+          Inline editing: double-click a cell to edit, blur to save. The trigger is ours rather
+          than PrimeNG's `pEditableColumn`, which opens on a single click and offers no
+          double-click mode — see the note in course-list.ts.
+
+          主代碼 / 原廠 / 課程群組 carry no (dblclick) and no editor at all: read-only is the
+          absence of the handler, not a flag that could be got wrong.
+        -->
         <ng-template pTemplate="body" let-course>
           <tr>
             <td>{{ course.pkid }}</td>
-            <td>{{ course.displayOrder }}</td>
-            <td>{{ course.courseId }}</td>
-            <td>{{ course.prodCourseId }}</td>
-            <td>{{ course.title }}</td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'displayOrder')">
+              @if (isEditing(course, 'displayOrder')) {
+                <input
+                  type="number"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="顯示順序"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.displayOrder }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'courseId')">
+              @if (isEditing(course, 'courseId')) {
+                <input
+                  type="text"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="簡介代碼"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.courseId }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'prodCourseId')">
+              @if (isEditing(course, 'prodCourseId')) {
+                <input
+                  type="text"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="科目代碼"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.prodCourseId }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'title')">
+              @if (isEditing(course, 'title')) {
+                <input
+                  type="text"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="課程名稱"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.title }}
+              }
+            </td>
+
+            <!-- 原廠 — read-only FK nav object. -->
             <td>{{ course.partner?.name || '—' }}</td>
-            <!-- courseGroup is null when the nullable FK is null. -->
+            <!-- 課程群組 — read-only FK nav object; null when the nullable FK is null. -->
             <td>{{ course.courseGroup?.description || '—' }}</td>
-            <td>{{ course.publishStatus?.description || '—' }}</td>
-            <!-- scheduleOn/Off are plain yyyy-MM-dd (DateOnly): no 'Z' suffix needed. -->
-            <td>{{ course.scheduleOn }}</td>
-            <td>{{ course.scheduleOff }}</td>
-            <td>{{ course.hour }}</td>
-            <td>{{ course.listPrice | number }}</td>
-            <td>{{ course.learningCredit }}</td>
-            <td>{{ course.canRepeat ? '是' : '否' }}</td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'publishStatusPkid')">
+              @if (isEditing(course, 'publishStatusPkid')) {
+                <!-- Options are numeric: LookupItem.pkid is a string and would never match. -->
+                <p-select
+                  styleClass="cell-editor"
+                  [options]="publishStatusSelectOptions"
+                  [(ngModel)]="editValue"
+                  optionLabel="label"
+                  optionValue="pkid"
+                  appendTo="body"
+                  [autofocus]="true"
+                  (onChange)="commit(course)"
+                  (onBlur)="commit(course)"
+                  ariaLabel="上架狀態"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.publishStatus?.description || '—' }}
+              }
+            </td>
+
+            <!-- scheduleOn/Off are plain yyyy-MM-dd (DateOnly): no 'Z' suffix, and the editor
+                 round-trips through fromIso/toIso so the day can't shift in UTC+8. -->
+            <td class="cell-editable" (dblclick)="startEdit(course, 'scheduleOn')">
+              @if (isEditing(course, 'scheduleOn')) {
+                <p-datepicker
+                  styleClass="cell-editor"
+                  [(ngModel)]="editValue"
+                  dateFormat="yy/mm/dd"
+                  appendTo="body"
+                  [showIcon]="false"
+                  (onSelect)="commit(course)"
+                  (onBlur)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.scheduleOn }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'scheduleOff')">
+              @if (isEditing(course, 'scheduleOff')) {
+                <p-datepicker
+                  styleClass="cell-editor"
+                  [(ngModel)]="editValue"
+                  dateFormat="yy/mm/dd"
+                  appendTo="body"
+                  [showIcon]="false"
+                  (onSelect)="commit(course)"
+                  (onBlur)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.scheduleOff }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'hour')">
+              @if (isEditing(course, 'hour')) {
+                <input
+                  type="number"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="時數"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.hour }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'listPrice')">
+              @if (isEditing(course, 'listPrice')) {
+                <!-- decimal(9, 0) -> integer only; a fraction would be rounded away by SQL Server. -->
+                <input
+                  type="number"
+                  step="1"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="定價"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.listPrice | number }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'learningCredit')">
+              @if (isEditing(course, 'learningCredit')) {
+                <!-- decimal(9, 1) -> fractions are normal here (5.5, 2.5, 22.5). -->
+                <input
+                  type="number"
+                  step="0.5"
+                  pInputText
+                  class="cell-editor"
+                  [(ngModel)]="editValue"
+                  (blur)="commit(course)"
+                  (keydown.enter)="commit(course)"
+                  (keydown.escape)="cancelEdit()"
+                  [pAutoFocus]="true"
+                  aria-label="點數"
+                />
+                @if (editError()) {
+                  <small class="cell-error">{{ editError() }}</small>
+                }
+              } @else {
+                {{ course.learningCredit }}
+              }
+            </td>
+
+            <td class="cell-editable" (dblclick)="startEdit(course, 'canRepeat')">
+              @if (isEditing(course, 'canRepeat')) {
+                <p-checkbox
+                  [(ngModel)]="editValue"
+                  [binary]="true"
+                  [autofocus]="true"
+                  (onChange)="commit(course)"
+                  (onBlur)="commit(course)"
+                  ariaLabel="允許重聽"
+                />
+              } @else {
+                {{ course.canRepeat ? '是' : '否' }}
+              }
+            </td>
             <td class="col-actions">
               <button
                 type="button"

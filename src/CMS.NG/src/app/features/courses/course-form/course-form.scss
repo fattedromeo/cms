@@ -4,6 +4,22 @@
   color: #64748b;
 }
 
+/* Pins 儲存/取消 while the form body scrolls under them — this form is long enough (four tabs,
+   nvarchar(max) textareas) that Save would otherwise scroll out of reach.
+
+   `top: 0` is measured against `.content` (app.scss), the app's only scroll container: the sidebar
+   is a flex sibling and there is no app header, so nothing above can be covered. The sticky range
+   is the <form>, which spans the header plus the body card.
+
+   z-index puts it over the body card, which follows it in DOM order and would otherwise paint on
+   top. 20 stays far below PrimeNG's overlays — the selects/datepickers/multiselects here all
+   appendTo="body" — so their panels still open over the toolbar. */
+.page-header--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 /* Marks a tab whose fields failed validation — without this, tabs would hide the errors. */
 .tab-error {
   color: #dc2626;

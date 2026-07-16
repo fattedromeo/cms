@@ -7,10 +7,11 @@ import { TagModule } from 'primeng/tag';
 
 import { AppRoleService } from '@core/services/app-role.service';
 import { AppRole } from '@core/models/app-role.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-app-role-detail',
-  imports: [CommonModule, ButtonModule, TagModule],
+  imports: [CommonModule, ButtonModule, TagModule, RowAuditBadge],
   templateUrl: './app-role-detail.html',
   styleUrl: './app-role-detail.scss',
 })

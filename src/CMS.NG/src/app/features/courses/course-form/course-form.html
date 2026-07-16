@@ -2,9 +2,10 @@
   <p-toast />
 
   <form [formGroup]="form" (ngSubmit)="save()">
-    <div class="card page-header">
+    <div class="card page-header page-header--sticky">
       <div class="page-header__titles">
         <h1 class="page-header__title">{{ isEdit() ? '編輯課程' : '新增課程' }}</h1>
+        <app-row-audit-badge tableName="Course" [pkid]="recordPkid()" />
       </div>
       <div class="page-header__actions">
         <p-button

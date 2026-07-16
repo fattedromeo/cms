@@ -1,15 +1,23 @@
 using System.Data;
 using CMS.API.Data;
 using CMS.API.Models;
+using CMS.API.Services;
 using Dapper;
 
 namespace CMS.API.Repositories;
 
 public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
 {
-    private readonly IDbConnectionFactory _factory;
+    private const string TableName = "FeaturedPromoItem";
 
-    public FeaturedPromoItemRepository(IDbConnectionFactory factory) => _factory = factory;
+    private readonly IDbConnectionFactory _factory;
+    private readonly IRowAuditWriter _audit;
+
+    public FeaturedPromoItemRepository(IDbConnectionFactory factory, IRowAuditWriter audit)
+    {
+        _factory = factory;
+        _audit = audit;
+    }
 
     // Promotion2 is INNER JOINed (Promotion_pkid is NOT NULL + FK-enforced) purely to carry
     // PromoCode into the grid. Its nav block starts at `p.pkid AS Pkid` for splitOn.
@@ -38,15 +46,29 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
     /// splitOn searches from startIdx + 1, so the entity's own key is not split away.
     /// </summary>
     private static async Task<IEnumerable<FeaturedPromoItem>> QueryWithPromoAsync(
-        IDbConnection conn, string sql, object? param, CancellationToken ct)
+        IDbConnection conn, string sql, object? param, CancellationToken ct, IDbTransaction? tx = null)
         => await conn.QueryAsync<FeaturedPromoItem, FeaturedPromoPromotionRef, FeaturedPromoItem>(
-            new CommandDefinition(sql, param, cancellationToken: ct),
+            new CommandDefinition(sql, param, tx, cancellationToken: ct),
             (item, promo) =>
             {
                 item.Promotion = promo;
                 return item;
             },
             splitOn: "Pkid");
+
+    /// <summary>
+    /// Row image on the caller's connection/transaction — the audit before/after compare. Selects
+    /// only the real FeaturedPromoItem columns, NOT the Promotion nav: two reads yield distinct nav
+    /// instances, which reference-compare as "changed" and would put a phantom "Promotion" in every
+    /// update's ActionDesc. A promo change shows as PromotionPkid instead.
+    /// </summary>
+    private static Task<FeaturedPromoItem?> SnapshotAsync(
+        IDbConnection conn, IDbTransaction tx, int pkid, CancellationToken ct) =>
+        conn.QuerySingleOrDefaultAsync<FeaturedPromoItem>(new CommandDefinition(@"
+            SELECT f.pkid, f.ScheduleOn, f.TrainingCenter_pkid AS TrainingCenterPkid, f.Slot,
+                   f.Promotion_pkid AS PromotionPkid, f.Topic, f.Description
+            FROM FeaturedPromoItem f WHERE f.pkid = @pkid;",
+            new { pkid }, tx, cancellationToken: ct));
 
     public async Task<IEnumerable<FeaturedPromoItem>> GetAllAsync(CancellationToken ct = default)
     {
@@ -112,11 +134,15 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
     public async Task<FeaturedPromoItem> CreateAsync(
         FeaturedPromoItemRequest request, CancellationToken ct = default)
     {
+        // Transaction spans the INSERT, the nav re-read and the audit row, so the audit cannot
+        // outlive a failed insert (nor vice versa).
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        using var tx = conn.BeginTransaction();
 
         // pkid is int IDENTITY — excluded from the INSERT.
         // A duplicate (ScheduleOn, TrainingCenter_pkid, Slot) raises 2627 and a bad Promotion_pkid
-        // raises 547; both surface as SqlException and are mapped in the controller.
+        // raises 547; both surface as SqlException and are mapped in the controller. Either rolls
+        // the transaction back on dispose.
         const string insertSql = @"
             INSERT INTO FeaturedPromoItem
                 (ScheduleOn, TrainingCenter_pkid, Slot, Promotion_pkid, Topic, Description)
@@ -125,16 +151,30 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
             SELECT CAST(SCOPE_IDENTITY() AS int);";
 
         var pkid = await conn.ExecuteScalarAsync<int>(
-            new CommandDefinition(insertSql, request, cancellationToken: ct));
+            new CommandDefinition(insertSql, request, tx, cancellationToken: ct));
 
-        // Re-read so the caller gets the resolved PromoCode nav object, not a half-built instance.
-        return await GetByIdAsync(pkid, ct)
+        // Re-read inside the transaction so the caller gets the resolved PromoCode nav object, not
+        // a half-built instance (the public GetByIdAsync opens its own connection, which could not
+        // see this uncommitted row).
+        var sql = $"SELECT {SelectColumns} {FromJoin} WHERE f.pkid = @pkid;";
+        var rows = await QueryWithPromoAsync(conn, sql, new { pkid }, ct, tx);
+        var created = rows.SingleOrDefault()
             ?? throw new InvalidOperationException($"FeaturedPromoItem {pkid} vanished after insert.");
+
+        await _audit.LogInsertAsync(conn, tx, TableName, created, ct);
+        tx.Commit();
+        return created;
     }
 
     public async Task<bool> UpdateAsync(FeaturedPromoItemRequest request, CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        using var tx = conn.BeginTransaction();
+
+        // The "before" image feeds the audit's changed-column list; a missing row returns false,
+        // and the disposed (uncommitted) transaction rolls back with no audit row written.
+        var before = await SnapshotAsync(conn, tx, request.Pkid, ct);
+        if (before is null) return false;
 
         // Slot is deliberately NOT in the SET list — it is owned by MoveAsync, which is the only
         // path that understands the unique index. Letting the Edit form post a Slot would give it
@@ -149,19 +189,34 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
              WHERE pkid = @Pkid;";
 
         var affected = await conn.ExecuteAsync(
-            new CommandDefinition(updateSql, request, cancellationToken: ct));
-        return affected > 0;
+            new CommandDefinition(updateSql, request, tx, cancellationToken: ct));
+        if (affected == 0) return false;
+
+        var after = await SnapshotAsync(conn, tx, request.Pkid, ct);
+        await _audit.LogUpdateAsync(conn, tx, TableName, before, after!, ct);
+        tx.Commit();
+        return true;
     }
 
     public async Task<bool> DeleteAsync(int pkid, CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        using var tx = conn.BeginTransaction();
+
+        // Load first — after the DELETE the row's Topic (the audit ActionDesc) is gone.
+        var row = await SnapshotAsync(conn, tx, pkid, ct);
+        if (row is null) return false;
+
         // Nothing FK-references FeaturedPromoItem (verified via sys.foreign_keys against the dev
         // DB), so this raises no 547 and cascades nothing. It is a plain, safe single-row delete.
         var affected = await conn.ExecuteAsync(new CommandDefinition(
             "DELETE FROM FeaturedPromoItem WHERE pkid = @pkid;",
-            new { pkid }, cancellationToken: ct));
-        return affected > 0;
+            new { pkid }, tx, cancellationToken: ct));
+        if (affected == 0) return false;
+
+        await _audit.LogDeleteAsync(conn, tx, TableName, row, ct);
+        tx.Commit();
+        return true;
     }
 
     /// <summary>Coordinates of one grid cell — what MoveAsync needs to find a slot's neighbour.</summary>
@@ -214,6 +269,13 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
             new { row.ScheduleOn, row.TrainingCenterPkid, targetSlot },
             tx, cancellationToken: ct));
 
+        // A move is an Update of Slot — it gets the same before/after audit as UpdateAsync, one
+        // RowAudit row per row the move touches (two on a swap).
+        var movedBefore = await SnapshotAsync(conn, tx, pkid, ct);
+        var neighbourBefore = neighbourPkid is null
+            ? null
+            : await SnapshotAsync(conn, tx, neighbourPkid.Value, ct);
+
         if (neighbourPkid is null)
         {
             await conn.ExecuteAsync(new CommandDefinition(
@@ -235,6 +297,15 @@ public sealed class FeaturedPromoItemRepository : IFeaturedPromoItemRepository
                 swapSql,
                 new { pkid, targetSlot, currentSlot = row.Slot, neighbourPkid = neighbourPkid.Value },
                 tx, cancellationToken: ct));
+        }
+
+        var movedAfter = await SnapshotAsync(conn, tx, pkid, ct);
+        await _audit.LogUpdateAsync(conn, tx, TableName, movedBefore!, movedAfter!, ct);
+
+        if (neighbourBefore is not null)
+        {
+            var neighbourAfter = await SnapshotAsync(conn, tx, neighbourPkid!.Value, ct);
+            await _audit.LogUpdateAsync(conn, tx, TableName, neighbourBefore, neighbourAfter!, ct);
         }
 
         tx.Commit();

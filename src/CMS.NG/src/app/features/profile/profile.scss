@@ -1,0 +1,54 @@
+.roles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.roles__empty {
+  color: var(--p-text-muted-color, #64748b);
+  font-size: 0.875rem;
+}
+
+.field__hint {
+  color: var(--p-text-muted-color, #64748b);
+  font-size: 0.75rem;
+}
+
+.field__error {
+  color: #dc2626;
+  font-size: 0.75rem;
+}
+
+/* A disabled input still has to read as text, not as something broken. */
+input[readonly][disabled] {
+  opacity: 1;
+  background: var(--p-surface-100, #f1f5f9);
+  color: var(--p-text-muted-color, #64748b);
+  cursor: not-allowed;
+}
+
+:host ::ng-deep .p-inputtext {
+  width: 100%;
+}
+
+/* The policy message is specified with line breaks; keep them. */
+.field__error--policy,
+.password__hint,
+.password__error-text {
+  white-space: pre-line;
+}
+
+.password__hint {
+  display: block;
+  margin-top: 0.75rem;
+}
+
+.password__actions {
+  margin-top: 1rem;
+}
+
+:host ::ng-deep .password__error {
+  width: 100%;
+  margin-bottom: 0.75rem;
+}

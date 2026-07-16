@@ -1,5 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 
 import { FeaturedPromoItemForm } from './featured-promo-item-form';
 import {
@@ -57,7 +59,13 @@ describe('FeaturedPromoItemForm', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [FeaturedPromoItemForm],
-      providers: [provideNoopAnimations()],
+      providers: [
+        provideNoopAnimations(),
+        // The 異動紀錄 badge's RowAuditService rides the real HttpClient; the testing backend
+        // satisfies the injection and leaves its GET pending (harmless here).
+        provideHttpClient(),
+        provideHttpClientTesting(),
+      ],
     }).compileComponents();
   });
 

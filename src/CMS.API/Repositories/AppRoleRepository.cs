@@ -1,19 +1,48 @@
 using System.Data;
 using CMS.API.Data;
 using CMS.API.Models;
+using CMS.API.Services;
 using Dapper;
 
 namespace CMS.API.Repositories;
 
 public sealed class AppRoleRepository : IAppRoleRepository
 {
-    private readonly IDbConnectionFactory _factory;
+    private const string TableName = "AppRole";
 
-    public AppRoleRepository(IDbConnectionFactory factory) => _factory = factory;
+    private readonly IDbConnectionFactory _factory;
+    private readonly IRowAuditWriter _audit;
+
+    public AppRoleRepository(IDbConnectionFactory factory, IRowAuditWriter audit)
+    {
+        _factory = factory;
+        _audit = audit;
+    }
 
     private const string SelectColumns = @"
         r.pkid, r.RoleId, r.RoleName, r.PermissionLevel, r.Description,
         (SELECT COUNT(*) FROM AppUserRole ur WHERE ur.RoleId = r.RoleId) AS UserCount";
+
+    /// <summary>
+    /// Row image on the caller's connection/transaction — the audit before/after compare. Selects
+    /// the real AppRole columns plus the junction UserIds (membership is edited through this form,
+    /// so it belongs in the changed-column list), but NOT the derived UserCount — it moves in
+    /// lockstep with UserIds and would report every membership change twice.
+    /// </summary>
+    private static async Task<AppRole?> SnapshotAsync(
+        IDbConnection conn, IDbTransaction tx, string roleId, CancellationToken ct)
+    {
+        var role = await conn.QuerySingleOrDefaultAsync<AppRole>(new CommandDefinition(
+            "SELECT r.pkid, r.RoleId, r.RoleName, r.PermissionLevel, r.Description FROM AppRole r WHERE r.RoleId = @roleId;",
+            new { roleId }, tx, cancellationToken: ct));
+        if (role is null) return null;
+
+        var userIds = await conn.QueryAsync<string>(new CommandDefinition(
+            "SELECT UserId FROM AppUserRole WHERE RoleId = @roleId ORDER BY UserId ASC;",
+            new { roleId }, tx, cancellationToken: ct));
+        role.UserIds = userIds.ToList();
+        return role;
+    }
 
     public async Task<IEnumerable<AppRole>> GetAllAsync(CancellationToken ct = default)
     {
@@ -84,9 +113,8 @@ public sealed class AppRoleRepository : IAppRoleRepository
             insertSql, request, tx, cancellationToken: ct));
 
         await ReplaceUsersAsync(conn, tx, request.RoleId, request.UserIds, ct);
-        tx.Commit();
 
-        return new AppRole
+        var created = new AppRole
         {
             Pkid = pkid,
             RoleId = request.RoleId,
@@ -96,12 +124,25 @@ public sealed class AppRoleRepository : IAppRoleRepository
             UserCount = request.UserIds.Count,
             UserIds = request.UserIds
         };
+
+        await _audit.LogInsertAsync(conn, tx, TableName, created, ct);
+        tx.Commit();
+        return created;
     }
 
     public async Task<bool> UpdateAsync(AppRoleRequest request, CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
         using var tx = conn.BeginTransaction();
+
+        // The "before" image feeds the audit's changed-column list. A missing role returns false —
+        // the same outcome the affected == 0 branch used to produce.
+        var before = await SnapshotAsync(conn, tx, request.RoleId, ct);
+        if (before is null)
+        {
+            tx.Rollback();
+            return false;
+        }
 
         // RoleId is the immutable logical key; update the mutable columns by RoleId.
         const string updateSql = @"
@@ -120,6 +161,9 @@ public sealed class AppRoleRepository : IAppRoleRepository
         }
 
         await ReplaceUsersAsync(conn, tx, request.RoleId, request.UserIds, ct);
+
+        var after = await SnapshotAsync(conn, tx, request.RoleId, ct);
+        await _audit.LogUpdateAsync(conn, tx, TableName, before, after!, ct);
         tx.Commit();
         return true;
     }
@@ -129,6 +173,15 @@ public sealed class AppRoleRepository : IAppRoleRepository
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
         using var tx = conn.BeginTransaction();
 
+        // Load first — after the DELETE the row's RoleId (the audit ActionDesc) is gone. A missing
+        // role short-circuits to false, which is what "DELETE affected 0 rows" reported before.
+        var row = await SnapshotAsync(conn, tx, roleId, ct);
+        if (row is null)
+        {
+            tx.Rollback();
+            return false;
+        }
+
         // Remove junction rows first to satisfy the FK, then the role itself.
         await conn.ExecuteAsync(new CommandDefinition(
             "DELETE FROM AppUserRole WHERE RoleId = @roleId;",
@@ -137,8 +190,15 @@ public sealed class AppRoleRepository : IAppRoleRepository
             "DELETE FROM AppRole WHERE RoleId = @roleId;",
             new { roleId }, tx, cancellationToken: ct));
 
+        if (affected == 0)
+        {
+            tx.Rollback();
+            return false;
+        }
+
+        await _audit.LogDeleteAsync(conn, tx, TableName, row, ct);
         tx.Commit();
-        return affected > 0;
+        return true;
     }
 
     /// <summary>N-N sync: delete-then-reinsert the AppUserRole rows for a role.</summary>

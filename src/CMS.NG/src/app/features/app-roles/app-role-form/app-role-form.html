@@ -5,6 +5,7 @@
     <div class="card page-header">
       <div class="page-header__titles">
         <h1 class="page-header__title">{{ isEdit() ? '編輯角色' : '新增角色' }}</h1>
+        <app-row-audit-badge tableName="AppRole" [pkid]="recordPkid()" />
       </div>
       <div class="page-header__actions">
         <p-button

@@ -1,15 +1,23 @@
 using System.Data;
 using CMS.API.Data;
 using CMS.API.Models;
+using CMS.API.Services;
 using Dapper;
 
 namespace CMS.API.Repositories;
 
 public sealed class CourseRepository : ICourseRepository
 {
-    private readonly IDbConnectionFactory _factory;
+    private const string TableName = "Course";
 
-    public CourseRepository(IDbConnectionFactory factory) => _factory = factory;
+    private readonly IDbConnectionFactory _factory;
+    private readonly IRowAuditWriter _audit;
+
+    public CourseRepository(IDbConnectionFactory factory, IRowAuditWriter audit)
+    {
+        _factory = factory;
+        _audit = audit;
+    }
 
     // Course has no nchar columns -> no RTRIM here (the certifications *lookup* does need it).
     //
@@ -160,6 +168,44 @@ public sealed class CourseRepository : ICourseRepository
         return course;
     }
 
+    /// <summary>
+    /// Row image on the caller's connection/transaction — the audit before/after compare. Selects
+    /// the real Course columns plus the two N-N pkid lists, but deliberately NOT the nav objects:
+    /// two reads yield distinct nav instances, which reference-compare as "changed" and would put a
+    /// phantom "Partner, CourseGroup, PublishStatus" in every update's ActionDesc. With navs null on
+    /// both sides, only genuinely changed columns are listed (the FK changes show as PartnerPkid etc.).
+    /// </summary>
+    private static async Task<Course?> SnapshotAsync(
+        IDbConnection conn, IDbTransaction tx, int pkid, CancellationToken ct)
+    {
+        const string sql = @"
+            SELECT c.pkid AS Pkid, c.Title, c.OfficialTitle, c.CourseId, c.ProdCourseId, c.FriendlyUrl,
+                   c.DisplayOrder,
+                   c.Partner_pkid AS PartnerPkid, c.CourseGroup_pkid AS CourseGroupPkid,
+                   c.PublishStatus_pkid AS PublishStatusPkid,
+                   c.ScheduleOn, c.ScheduleOff, c.Hour, c.ListPrice, c.LearningCredit,
+                   c.Material, c.Objective, c.Target, c.Prerequisites, c.Outline,
+                   c.TowardCertOrExam, c.Note, c.OtherInfo, c.CanRepeat
+            FROM Course c WHERE c.pkid = @pkid;";
+        var course = await conn.QuerySingleOrDefaultAsync<Course>(
+            new CommandDefinition(sql, new { pkid }, tx, cancellationToken: ct));
+        if (course is null) return null;
+
+        // Same N-N reads as GetByIdAsync — a certification/job-category change is a real change to
+        // this course and belongs in the audit's changed-column list.
+        var certificationPkids = await conn.QueryAsync<int>(new CommandDefinition(
+            "SELECT Certification_pkid FROM CourseInCertification WHERE Course_pkid = @pkid ORDER BY Certification_pkid;",
+            new { pkid }, tx, cancellationToken: ct));
+        course.CertificationPkids = certificationPkids.ToList();
+
+        var jobCategoryPkids = await conn.QueryAsync<short>(new CommandDefinition(
+            "SELECT JobCategory_pkid FROM CourseJobCategories WHERE Course_pkid = @pkid ORDER BY JobCategory_pkid;",
+            new { pkid }, tx, cancellationToken: ct));
+        course.JobCategoryPkids = jobCategoryPkids.ToList();
+
+        return course;
+    }
+
     public async Task<Course> CreateAsync(CourseRequest request, CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
@@ -184,6 +230,7 @@ public sealed class CourseRepository : ICourseRepository
 
         // Re-read inside the transaction so the response carries the resolved nav objects.
         var created = await GetByIdAsync(conn, tx, pkid, ct);
+        await _audit.LogInsertAsync(conn, tx, TableName, created!, ct);
         tx.Commit();
         return created!;
     }
@@ -192,6 +239,15 @@ public sealed class CourseRepository : ICourseRepository
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
         using var tx = conn.BeginTransaction();
+
+        // The "before" image feeds the audit's changed-column list. A missing course returns false —
+        // the same outcome the affected == 0 branch produces.
+        var before = await SnapshotAsync(conn, tx, request.Pkid, ct);
+        if (before is null)
+        {
+            tx.Rollback();
+            return false;
+        }
 
         // pkid is the immutable identity key; every other column is mutable.
         const string updateSql = @"
@@ -232,6 +288,8 @@ public sealed class CourseRepository : ICourseRepository
         await ReplaceCertificationsAsync(conn, tx, request.Pkid, request.CertificationPkids, ct);
         await ReplaceJobCategoriesAsync(conn, tx, request.Pkid, request.JobCategoryPkids, ct);
 
+        var after = await SnapshotAsync(conn, tx, request.Pkid, ct);
+        await _audit.LogUpdateAsync(conn, tx, TableName, before, after!, ct);
         tx.Commit();
         return true;
     }
@@ -239,15 +297,33 @@ public sealed class CourseRepository : ICourseRepository
     public async Task<bool> DeleteAsync(int pkid, CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
+        using var tx = conn.BeginTransaction();
+
+        // Load first — after the DELETE the row's Title (the audit ActionDesc) is gone.
+        var row = await SnapshotAsync(conn, tx, pkid, ct);
+        if (row is null)
+        {
+            tx.Rollback();
+            return false;
+        }
 
         // No explicit junction cleanup needed (unlike AppRoleRepository.DeleteAsync): both
         // FK_CourseInCertification_Course and FK_CourseJobCategories_Course are ON DELETE CASCADE,
         // so those rows go silently. CourseFAQ / CourseRelatedLink / HotCourse do NOT cascade and
-        // still raise SqlException 547 -> 409 in the controller.
+        // still raise SqlException 547 -> 409 in the controller; the exception rolls the
+        // transaction back, so no audit row survives a refused delete.
         var affected = await conn.ExecuteAsync(new CommandDefinition(
             "DELETE FROM Course WHERE pkid = @pkid;",
-            new { pkid }, cancellationToken: ct));
-        return affected > 0;
+            new { pkid }, tx, cancellationToken: ct));
+        if (affected == 0)
+        {
+            tx.Rollback();
+            return false;
+        }
+
+        await _audit.LogDeleteAsync(conn, tx, TableName, row, ct);
+        tx.Commit();
+        return true;
     }
 
     /// <summary>N-N sync: delete-then-reinsert the CourseInCertification rows for a course.</summary>

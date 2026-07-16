@@ -1,98 +1,113 @@
 # CLAUDE.md
 
-CMS admin console generated from SQL Server schemas. Backend: .NET 9 Web API — Dapper, **no EF**.
-Frontend: Angular 20 (standalone) + PrimeNG **v20** (pinned).
+CMS admin console generated from SQL Server schemas.
 
-## Layout
+- **Backend** — .NET 9 Web API, Dapper, **no EF**: `src/CMS.sln` = `CMS.API` (:5000, Swagger at
+  `/swagger`) + `CMS.API.Tests` (xUnit + Moq). `src/global.json` pins the SDK to 9.x.
+- **Frontend** — Angular 20 (standalone) + PrimeNG **v20** (pinned): `src/CMS.NG` (:4200).
+- Run instructions: `src/README.md`.
 
-```
-database/            SQL Server table scripts — SOURCE OF TRUTH for the schema
-spec/                Feature build specs, conventions, reference docs, UI mockups
-src/
-  global.json        Pins the .NET SDK to 9.x
-  CMS.sln            Solution (CMS.API + CMS.API.Tests)
-  CMS.API/           .NET 9 Web API — Dapper, Swashbuckle, port 5000
-  CMS.API.Tests/     xUnit + Moq controller tests
-  CMS.NG/            Angular 20 + PrimeNG — port 4200
-  README.md          Run instructions
-```
-
-## Commands
-
-Backend (from `src/`):
 ```bash
-dotnet run --project CMS.API      # http://localhost:5000, Swagger at /swagger
-dotnet test CMS.sln               # xUnit tests
-```
-
-Frontend (from `src/CMS.NG/`):
-```bash
-npm start                                            # ng serve, http://localhost:4200
-npx ng test --watch=false --browsers=ChromeHeadless  # single-run (CI/verify)
-npx ng build --configuration production              # prod build (budgets + env swap)
+# from src/
+dotnet run --project CMS.API
+dotnet test CMS.sln
+# from src/CMS.NG/
+npm start
+npx ng test --watch=false --browsers=ChromeHeadless   # single-run (CI/verify)
+npx ng build --configuration production               # a green ng test does NOT mean it compiles
 ```
 
 ## Reference docs — read the relevant one BEFORE writing code
 
-These hold the detail deliberately kept out of this file. Don't work from memory of them.
+The detail lives here, deliberately kept out of this file. Don't work from memory of them.
 
 | Read this | When |
 |-----------|------|
+| `database/{sub-system}.sql` | **always** — the schema decides the truth |
+| `spec/{sub-system}/{Table}.md` | that feature's build spec (e.g. `spec/course/Course.md`) |
 | `spec/reference/backend.md` | touching `Models/` `Repositories/` `Controllers/` `Program.cs` |
 | `spec/reference/frontend.md` | touching `src/CMS.NG` |
 | `spec/reference/features.md` | modifying a feature, or copying the closest one |
 | `spec/reference/workflow.md` | adding a new feature (the `/crud` flow) |
+| `spec/auth/*.md` | touching auth (`Authorization`, `Login`, `Profile`, `AppUser`) |
+| `spec/reference/cross-cutting.md` | adding any repository write or detail/form page (RowAudit + error-handling checklists) |
 | `spec/code-gen.convention.md` | scaffolding shapes |
-| `database/{sub-system}.sql` | **always** — the schema decides the truth |
-| `spec/{sub-system}/{Table}.md` | that feature's build spec (e.g. `spec/course/Course.md`) |
 
-Implemented: **AppRole**, **AppUser**, **Partner**, **PublishStatus**, **Course**, **CourseGroup**,
-**FeaturedPromoItem** — details in `spec/reference/features.md`.
+Implemented (one entry each in `features.md`): **AppRole**, **AppUser**, **Partner**,
+**PublishStatus**, **Course**, **CourseGroup**, **FeaturedPromoItem**, **Login API**, app-wide **JWT
+authorization**, **My Profile** (rename / change password; Admin reset-to-default on the AppUser form),
+**Row Audit** (writer + per-record history badge), **global exception handling** (middleware + 5xx toast).
 
 ## Non-negotiables
 
-Everything below fails **silently** — no exception, no failing test. The rest is in the reference
-docs; these are here because they change what you'd otherwise do by default.
+Each fails **silently** (no exception, no failing test) and changes what you'd do by default. The line
+is only the trigger — the linked doc holds the full rule and the war story.
 
-1. **The schema is the source of truth.** `spec/sample1.spec.md` / `sample2.spec.md` describe a
-   *fuller system than this DB*, the `/crud` skill text references infrastructure that **does not
-   exist here** (RowAudit, a shared lookup service), and `ui-sample-*.png` mockups are style only.
-   Derive every fact from `database/*.sql`. See `spec/reference/workflow.md`.
+**Truth & verification** → `workflow.md`
 
-2. **Verify against the live dev DB — don't assume.** A populated SQL Server is on the `CMS`
-   connection string. Controller tests mock the repository, so they **cannot** catch SQL-semantics
-   bugs; that is how the lookup `ORDER BY` bug, the `DateOnly` requirement and the
-   FeaturedPromoItem slot-swap `2627` were found. Query the *data*, not just the schema — it also
-   decides the shape: FeaturedPromoItem's slots turned out to be sparse, and its `Topic` turned out
-   not to mirror its promo's. Leave dev data as you found it (transaction + rollback).
+1. **Schema beats every other source** — sample specs, `/crud` text and `ui-sample-*.png` describe a
+   fuller system than this DB. Every fact comes from `database/*.sql`.
+2. **Verify against the live dev DB** (`CMS` conn) — mocked-repo tests can't catch SQL-semantics bugs;
+   query the *data*, not just the schema. Leave it as found (transaction + rollback).
+3. **`DisplayOrder` ≠ `ORDER BY DisplayOrder`** — few distinct values = a scoped ordering that ties
+   arbitrarily (Course → `CourseId ASC`). Check the data.
+4. **Don't wire links to routes that don't exist yet** — record them in the spec. Lookup *endpoints*
+   are exempt: omitting one silently drops N-N data on save.
 
-3. **Qualify every lookup `ORDER BY`.** A cast numeric PK (`CAST(g.pkid AS varchar(6)) AS Pkid`)
-   makes an unqualified `ORDER BY pkid` bind to the varchar **alias**, sorting `1, 10, 100, 2`.
-   Write `ORDER BY g.pkid`. This shipped to production once.
+**SQL & DTOs** → `backend.md`
 
-4. **Read the FK cascades before writing a DELETE.** A cascading child is deleted *silently*
-   instead of raising 547 → the confirm text must say so. A non-cascading junction must be
-   hand-deleted first.
+5. **Qualify every lookup `ORDER BY`** (`ORDER BY g.pkid`) — else a cast numeric-PK alias sorts
+   `1, 10, 100, 2`. Shipped to prod once.
+6. **Read the FK cascades before a DELETE** — a cascading child dies silently (no 547); a
+   non-cascading junction must be hand-deleted first.
+7. **🔐 Secret/derived columns get no DTO property** (`AppUser.PasswordHash`). `SysConfig.configValue`
+   holds the JWT signing key **and** `defaultPassword`: never expose/log/return either. Verify a
+   secret by hashing it **in-process**, printing only a boolean — never the plaintext.
+8. **`date`/`DateOnly` needs `Data/DateOnlyTypeHandler.cs`** — the pinned Dapper/SqlClient map it in
+   neither direction.
 
-5. **A `DisplayOrder` column does not mean `ORDER BY DisplayOrder`.** Check the data: if it has few
-   distinct values it is a *scoped* ordering and sorts arbitrarily (Course → `CourseId ASC`).
+**Auth** → `Authorization.md` (+ `Login.md`, `Profile.md`, `AppUser.md`)
 
-6. **Dates:** `date`/`DateOnly` needs `Data/DateOnlyTypeHandler.cs` (the pinned Dapper/SqlClient
-   support it in neither direction). On the frontend use `core/utils/date.util.ts` — never
-   `toISOString()` or `new Date('yyyy-MM-dd')`, both of which shift the day in UTC+8. `'Z'` is for
-   `datetime` columns only, never for `DateOnly`.
+9. **`MapInboundClaims` defaults `true` and 403s every Admin** — it rewrites `role` to the
+   `ClaimTypes.Role` URI, so `RoleClaimType="role"` matches nothing. Emit = validate = compare.
+10. **A hidden menu/guard/button is not access control** — the API's `[Authorize(Roles=...)]` (403)
+    is; the UI only mirrors it.
+11. **`[AllowAnonymous]` on a *controller* defeats `[Authorize]` on its actions** — it goes on
+    `AuthController.Login` alone. A 401 alone doesn't prove protection (the action can 401 itself);
+    assert `WWW-Authenticate: Bearer` + repo untouched.
+12. **A self-service write targets the JWT user, never the body** — and must not reuse
+    `IAppUserRepository.UpdateAsync` (it replaces roles). No over-postable DTO property; one-column UPDATE.
+13. **A 401 signs the user out** (the interceptor clears the session) — use it *only* for "not signed
+    in"; a wrong **current** password is a `400`.
+14. **Never trim a password** (but do trim `UserName`) — `" x"` must not authenticate as `"x"`.
+15. **`PasswordUpdatedTime` is a claim about the hash, not an audit stamp** — `NULL` = on the shared
+    default (create + Admin reset); a UTC value = user-chosen. "now" on a reset silently strands the
+    user on the public default.
 
-7. **`LookupItem.pkid` is a `string`;** numeric FK controls need `Number(...)` mapping or the
-   `p-select` silently shows blank.
+**Angular** → `frontend.md`
 
-8. **🔐 Keep secret/derived columns out of the DTOs entirely** — no property to bind means it cannot
-   leak or be over-posted (`AppUser.PasswordHash`). `SysConfig.configValue` holds a JWT signing key:
-   never expose, log, or put it in an exception message.
+16. **`LookupItem.pkid` is a `string`** — numeric FK controls need `Number(...)` or `p-select`
+    silently shows blank.
+17. **Dates: use `core/utils/date.util.ts`** — never `toISOString()`/`new Date('yyyy-MM-dd')` (they
+    shift the day in UTC+8). `'Z'` is for `datetime` only, never `DateOnly`.
+18. **A `varchar` business key in a URL needs `encodeURIComponent`** — `CourseId`/`UserId` hold
+    spaces, CJK, `@`. Raw interpolation breaks the URL with no error, and the pretty-case test passes.
 
-9. **Don't wire links to routes that don't exist yet** — record them in the spec instead. (Lookup
-   *endpoints* are exempt: omitting one silently drops N-N data on save.)
+**Cross-cutting (every repository write, every detail/form page)** → `cross-cutting.md`
 
-10. **A `varchar` business key in a URL needs `encodeURIComponent` — check the data first.** These
-    keys are not the tidy alphanumerics they look like: `Course.CourseId` holds spaces, *trailing*
-    spaces, parens and CJK (15 of 1,080 rows); `AppUser.UserId` is an email. Raw interpolation just
-    emits a broken URL — no exception, and a test asserting the pretty case still passes.
+19. **Every repository write logs to RowAudit** via `IRowAuditWriter`, on the **same
+    connection/transaction** (audit rolls back with the change). Update/Delete **snapshot the row
+    first**; snapshots = real columns + N-N pkids only — navs/derived counts/secrets poison the diff.
+20. **Every detail/form page hosts `app-row-audit-badge`** (`tableName` + `pkid`; forms: `recordPkid`
+    signal, `null` in create mode). `RowAudit.DateTime` is server-**local** — the one `datetime`
+    that never gets `'Z'` (exception to rule 17).
+21. **Unexpected errors belong to the global middleware** — no per-controller try/catch (specific
+    catches like 547 → 409 stay); the client sees only the generic 500, never stack/SQL. 401/403/400
+    keep their shapes.
+22. **The interceptor already toasts API 5xx globally** — pages add no generic-error toast (it would
+    double up); local handling is for validation only. 401 keeps signing out → `/login`.
+
+## gstack
+
+Use the `/browse` skill for **all** web browsing; never `mcp__claude-in-chrome__*`. The available
+gstack skills are surfaced by the harness each session — don't maintain a copy here.

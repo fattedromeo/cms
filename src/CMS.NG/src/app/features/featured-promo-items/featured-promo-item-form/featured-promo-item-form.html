@@ -1,4 +1,10 @@
 <form class="promo-form" [formGroup]="form" (ngSubmit)="save()">
+  <!-- The panel has no page header (it lives inside a grid cell), so the badge opens the form.
+       New/Paste panels have no record yet → null pkid → neutral no-history state, no fetch. -->
+  <div class="promo-form__row">
+    <app-row-audit-badge tableName="FeaturedPromoItem" [pkid]="item()?.pkid ?? null" />
+  </div>
+
   <div class="promo-form__row">
     <label class="promo-form__label" for="promoCode">PromoCode:</label>
     <p-autocomplete

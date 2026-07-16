@@ -1,0 +1,51 @@
+<div class="login">
+  <form class="login__card card" [formGroup]="form" (ngSubmit)="submit()">
+    <div class="login__brand">
+      <span class="login__brand-text">UWA</span>
+      <h1 class="login__title">CMS 管理後台</h1>
+      <p class="login__subtitle">請輸入帳號密碼登入</p>
+    </div>
+
+    @if (error()) {
+      <p-message severity="error" [text]="error()" styleClass="login__error" />
+    }
+
+    <div class="field">
+      <label for="userId">使用者代碼 <span class="required">*</span></label>
+      <input
+        id="userId"
+        type="text"
+        pInputText
+        formControlName="userId"
+        autocomplete="username"
+        [pAutoFocus]="true"
+      />
+      @if (form.controls.userId.touched && form.controls.userId.invalid) {
+        <small class="field__error">請輸入使用者代碼。</small>
+      }
+    </div>
+
+    <div class="field">
+      <label for="password">密碼 <span class="required">*</span></label>
+      <p-password
+        inputId="password"
+        formControlName="password"
+        [feedback]="false"
+        [toggleMask]="true"
+        [fluid]="true"
+        autocomplete="current-password"
+      />
+      @if (form.controls.password.touched && form.controls.password.invalid) {
+        <small class="field__error">請輸入密碼。</small>
+      }
+    </div>
+
+    <p-button
+      label="登入"
+      icon="pi pi-sign-in"
+      type="submit"
+      styleClass="login__submit"
+      [loading]="submitting()"
+    />
+  </form>
+</div>

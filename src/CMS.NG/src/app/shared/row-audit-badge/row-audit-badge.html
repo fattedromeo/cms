@@ -1,0 +1,51 @@
+<!-- ⚠️ RowAudit.dateTime is server-LOCAL time (audit writer stamps DateTime.Now) — no + 'Z' here,
+     unlike passwordUpdatedTime. See core/models/row-audit.model.ts. -->
+<button type="button" class="row-audit-badge" (click)="open()">
+  <span class="row-audit-badge__label">
+    <i class="pi pi-history" aria-hidden="true"></i>
+    異動紀錄 History
+  </span>
+  <span class="row-audit-badge__latest">
+    @if (!loaded()) {
+      載入中…
+    } @else if (latest(); as l) {
+      {{ l.actionType }} by {{ l.userName }} · {{ l.dateTime | date: 'yyyy-MM-dd HH:mm' }}
+    } @else {
+      <span class="muted">尚無紀錄 No history</span>
+    }
+  </span>
+</button>
+
+<p-dialog
+  header="異動紀錄 History"
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [modal]="true"
+  [dismissableMask]="true"
+  [style]="{ width: '40rem', maxWidth: '95vw' }"
+>
+  @if (trail().length) {
+    <table class="row-audit-trail">
+      <thead>
+        <tr>
+          <th>時間 Time</th>
+          <th>使用者 User</th>
+          <th>動作 Action</th>
+          <th>說明 Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (entry of trail(); track $index) {
+          <tr>
+            <td class="row-audit-trail__time">{{ entry.dateTime | date: 'yyyy-MM-dd HH:mm:ss' }}</td>
+            <td>{{ entry.userName }}</td>
+            <td>{{ entry.actionType }}</td>
+            <td class="row-audit-trail__desc">{{ entry.actionDesc }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  } @else {
+    <p class="row-audit-empty muted">此記錄尚無異動紀錄。 No history yet.</p>
+  }
+</p-dialog>

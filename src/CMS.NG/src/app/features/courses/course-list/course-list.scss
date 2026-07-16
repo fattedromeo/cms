@@ -51,6 +51,35 @@
   padding: 1.5rem 0;
 }
 
+/* --- Inline editing ------------------------------------------------------ */
+
+/* Hints that a cell takes a double-click. The read-only three (主代碼 / 原廠 / 課程群組) never
+   get this class, so they stay visually inert. */
+.cell-editable {
+  cursor: cell;
+}
+
+.cell-editable:hover {
+  background: #f8fafc;
+  outline: 1px dashed #cbd5e1;
+  outline-offset: -1px;
+}
+
+.cell-editor {
+  width: 100%;
+  min-width: 0;
+}
+
+/* The editor grows the row; keep the error under it rather than pushing the columns around. */
+.cell-error {
+  display: block;
+  margin-top: 2px;
+  color: #dc2626;
+  font-size: 0.72rem;
+  line-height: 1.25;
+  white-space: normal;
+}
+
 .drawer-body {
   display: flex;
   flex-direction: column;

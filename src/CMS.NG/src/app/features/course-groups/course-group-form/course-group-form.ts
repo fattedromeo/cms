@@ -11,6 +11,7 @@ import { MessageService } from 'primeng/api';
 
 import { CourseGroupService } from '@core/services/course-group.service';
 import { CourseGroupRequest } from '@core/models/course-group.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-course-group-form',
@@ -21,6 +22,7 @@ import { CourseGroupRequest } from '@core/models/course-group.model';
     InputNumberModule,
     ButtonModule,
     ToastModule,
+    RowAuditBadge,
   ],
   providers: [MessageService],
   templateUrl: './course-group-form.html',
@@ -36,6 +38,8 @@ export class CourseGroupForm implements OnInit {
   protected readonly isEdit = signal(false);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  /** The loaded record's pkid, for the 異動紀錄 badge; null in create mode (no history yet). */
+  protected readonly recordPkid = signal<number | null>(null);
 
   protected readonly form = this.fb.group({
     // pkid is the smallint IDENTITY key — display-only, disabled in both modes.
@@ -54,6 +58,7 @@ export class CourseGroupForm implements OnInit {
             pkid: group.pkid,
             description: group.description,
           });
+          this.recordPkid.set(group.pkid);
           this.loading.set(false);
         },
         error: () => {

@@ -11,6 +11,7 @@ import { MessageService } from 'primeng/api';
 
 import { PartnerService } from '@core/services/partner.service';
 import { PartnerRequest } from '@core/models/partner.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-partner-form',
@@ -21,6 +22,7 @@ import { PartnerRequest } from '@core/models/partner.model';
     InputNumberModule,
     ButtonModule,
     ToastModule,
+    RowAuditBadge,
   ],
   providers: [MessageService],
   templateUrl: './partner-form.html',
@@ -36,6 +38,8 @@ export class PartnerForm implements OnInit {
   protected readonly isEdit = signal(false);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  /** The loaded record's pkid, for the 異動紀錄 badge; null in create mode (no history yet). */
+  protected readonly recordPkid = signal<number | null>(null);
 
   protected readonly form = this.fb.group({
     // pkid is the smallint IDENTITY key — display-only, disabled in both modes.
@@ -64,6 +68,7 @@ export class PartnerForm implements OnInit {
             displayOrder: partner.displayOrder,
             imageFilename: partner.imageFilename,
           });
+          this.recordPkid.set(partner.pkid);
           this.loading.set(false);
         },
         error: () => {

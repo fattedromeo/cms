@@ -1,3 +1,12 @@
+<!-- Global error toast, fed by authInterceptor's 5xx handler through the ROOT MessageService
+     (app.config.ts). Outside the auth @if so it renders on the login page too. Feature pages'
+     own <p-toast> instances listen to their component-provided services — no crossover. -->
+<p-toast position="top-right" />
+
+@if (!isAuthenticated()) {
+  <!-- Signed out: the login page renders on its own, with no sidebar or header around it. -->
+  <router-outlet />
+} @else {
 <div class="layout" [class.layout--collapsed]="collapsed()">
   <aside class="sidebar">
     <div class="sidebar__brand">
@@ -15,7 +24,7 @@
     </div>
 
     <nav class="sidebar__nav">
-      @for (group of navGroups(); track group.labelEn) {
+      @for (group of visibleNavGroups(); track group.labelEn) {
         <div class="nav-group" [class.nav-group--open]="group.expanded">
           <button type="button" class="nav-group__header" (click)="toggleGroup(group)">
             <i class="nav-group__icon" [class]="group.icon"></i>
@@ -60,6 +69,28 @@
   </aside>
 
   <main class="content">
+    <header class="topbar">
+      <!-- The signed-in user's name doubles as the 個人資料 My Profile link. -->
+      <a
+        class="topbar__user"
+        routerLink="/profile"
+        routerLinkActive="topbar__user--active"
+        title="個人資料 My Profile"
+      >
+        <i class="pi pi-user topbar__user-icon"></i>
+        <span class="topbar__user-name">{{ userName() }}</span>
+      </a>
+      <a class="topbar__link" routerLink="/profile" routerLinkActive="topbar__link--active">
+        <i class="pi pi-id-card"></i>
+        <span>個人資料 My Profile</span>
+      </a>
+      <button type="button" class="topbar__logout" (click)="logout()">
+        <i class="pi pi-sign-out"></i>
+        <span>登出 Logout</span>
+      </button>
+    </header>
+
     <router-outlet />
   </main>
 </div>
+}

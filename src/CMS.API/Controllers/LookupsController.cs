@@ -4,6 +4,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
+/// <remarks>
+/// Authenticated, but deliberately <b>not</b> <c>[Authorize(Roles = "Admin")]</c> even though some
+/// lookups target admin tables (<c>app-roles</c>, <c>publish-statuses</c>). The Course and
+/// FeaturedPromoItem forms need those dropdowns, so Admin-gating this controller would break those
+/// pages for every non-Admin — while exposing only id/label pairs a signed-in user can already see
+/// rendered on the pages they are allowed to open. Authorization comes from the global fallback
+/// policy in `Program.cs`; the absence of an attribute here is intentional, not an oversight.
+/// </remarks>
 [ApiController]
 [Route("api/lookups")]
 [Produces("application/json")]

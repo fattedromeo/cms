@@ -12,7 +12,20 @@ Scaffolding shapes live in `spec/code-gen.convention.md`; this file is the hard-
   Connection string `CMS` is in `appsettings.json`.
 - **Routes**: `/api/{table-plural}` (kebab-case). `PUT` takes the key from the body, no route
   param. Lookups under `/api/lookups/{plural}` return `LookupItem { pkid, label }`.
-- `Program.cs` exposes `public partial class Program {}` so tests can reference the assembly.
+- `Program.cs` exposes `public partial class Program {}` so tests can reference the assembly —
+  `AuthorizationIntegrationTests` uses it with `WebApplicationFactory` to exercise the real pipeline.
+
+## 🔐 Every new controller is authenticated by default — don't undo it
+
+`Program.cs` sets an authorization `FallbackPolicy` requiring an authenticated user, so a controller
+that declares nothing is **already protected**. That is the point: forgetting `[Authorize]` fails
+closed instead of publishing a table. `AuthController` is the only `[AllowAnonymous]`, and adding a
+second one needs a reason in the spec.
+
+Admin-only tables (系統管理) carry `[Authorize(Roles = AdminRole.Name)]` → 403. Full rules, and the
+`MapInboundClaims` trap that silently 403s every Admin, are in `spec/auth/Authorization.md`. **Read it
+before touching auth wiring** — the failure mode there produces no exception and no failing test
+unless you write the integration test for it.
 - Tests: `CMS.API.Tests` needs `<FrameworkReference Include="Microsoft.AspNetCore.App" />`
   because it references MVC types (`ControllerBase`, `IActionResult`, ...).
 
@@ -85,11 +98,18 @@ lambda needs no null-coalescing. See `CourseRepository`; verified against the de
 Enforce by the type system, not a runtime check someone could forget. `AppUser.PasswordHash` is the
 reference:
 
-- no property on the response model → cannot leak (it is never in a SELECT list);
+- no property on the response model → cannot leak (it is in no `AppUserRepository` SELECT list);
 - no property on the request model → cannot be over-posted;
 - absent from the UPDATE column list → cannot be changed.
 
 Verified live: an over-posted `passwordHash` was ignored on both create and update.
+
+**The one deliberate exception is the login credential check** (`AuthRepository`, see
+`spec/auth/Login.md`), which must read the hash to compare it. It is a *separate* repository so
+`IAppUserRepository`'s contract stays absolute, and its return type `UserCredential` lives in
+`Repositories/`, **not** `Models/` — every type in `Models/` is client-reachable, so putting the hash
+there would reintroduce exactly the leak the rule prevents. `LoginResponse` has no password property.
+If you need the hash somewhere new, add a narrow repository rather than widening an existing DTO.
 
 `SysConfig.configValue` holds a JWT signing secret (`symmetricSecurityKey`) next to
 `defaultPassword`, so `ISysConfigRepository` returns only the one scalar — **no SysConfig

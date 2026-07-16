@@ -12,6 +12,7 @@ import { MessageService } from 'primeng/api';
 
 import { PublishStatusService } from '@core/services/publish-status.service';
 import { PublishStatusRequest } from '@core/models/publish-status.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-publish-status-form',
@@ -23,6 +24,7 @@ import { PublishStatusRequest } from '@core/models/publish-status.model';
     CheckboxModule,
     ButtonModule,
     ToastModule,
+    RowAuditBadge,
   ],
   providers: [MessageService],
   templateUrl: './publish-status-form.html',
@@ -38,6 +40,8 @@ export class PublishStatusForm implements OnInit {
   protected readonly isEdit = signal(false);
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
+  /** The loaded record's pkid, for the 異動紀錄 badge; null in create mode (no history yet). */
+  protected readonly recordPkid = signal<number | null>(null);
 
   protected readonly form = this.fb.group({
     // pkid is the user-assigned tinyint key (0–255). Required on create, disabled on edit.
@@ -63,6 +67,7 @@ export class PublishStatusForm implements OnInit {
             isDiscontinued: status.isDiscontinued,
           });
           this.form.controls.pkid.disable(); // pkid is the immutable key.
+          this.recordPkid.set(status.pkid);
           this.loading.set(false);
         },
         error: () => {

@@ -4,6 +4,7 @@
       <h1 class="page-header__title">檢視發布狀態</h1>
       @if (status()) {
         <span class="page-header__subtitle">{{ status()!.description }}</span>
+        <app-row-audit-badge tableName="PublishStatus" [pkid]="status()!.pkid" />
       }
     </div>
     <div class="page-header__actions">

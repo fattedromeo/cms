@@ -1,12 +1,22 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
+/// <remarks>
+/// 系統管理 Admin → 發布狀態. <b>Admin-only</b> — see <see cref="AppUsersController"/>.
+/// <para>
+/// Note this gates the <b>CRUD</b> endpoints only. Course's form still needs publish statuses as a
+/// dropdown, and that arrives via <c>GET /api/lookups/publish-statuses</c>, which is deliberately
+/// authenticated-but-not-Admin — gating the lookup would break the Course form for every non-Admin.
+/// </para>
+/// </remarks>
 [ApiController]
 [Route("api/publish-statuses")]
 [Produces("application/json")]
+[Authorize(Roles = AdminRole.Name)]
 public class PublishStatusesController : ControllerBase
 {
     private readonly IPublishStatusRepository _repository;

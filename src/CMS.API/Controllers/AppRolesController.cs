@@ -1,12 +1,18 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
+/// <remarks>
+/// 系統管理 Admin → 角色. <b>Admin-only</b> — see <see cref="AppUsersController"/>: the sidebar hiding
+/// 系統管理 is presentation, this attribute is the boundary.
+/// </remarks>
 [ApiController]
 [Route("api/app-roles")]
 [Produces("application/json")]
+[Authorize(Roles = AdminRole.Name)]
 public class AppRolesController : ControllerBase
 {
     private readonly IAppRoleRepository _repository;

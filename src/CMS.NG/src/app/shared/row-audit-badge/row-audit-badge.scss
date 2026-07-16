@@ -1,0 +1,65 @@
+.row-audit-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--p-content-border-color, #d0d5dd);
+  border-radius: 6px;
+  background: var(--p-content-background, #fff);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+
+  &:hover {
+    border-color: var(--p-primary-color, #3b82f6);
+  }
+
+  &__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+
+  &__latest {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color, #6b7280);
+  }
+}
+
+.row-audit-trail {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+
+  th,
+  td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--p-content-border-color, #e5e7eb);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  &__time {
+    white-space: nowrap;
+  }
+
+  &__desc {
+    overflow-wrap: anywhere;
+  }
+}
+
+.row-audit-empty {
+  margin: 0.5rem 0;
+}
+
+.muted {
+  color: var(--p-text-muted-color, #6b7280);
+}

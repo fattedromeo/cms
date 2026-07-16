@@ -1,19 +1,24 @@
 using System.Data;
 using CMS.API.Data;
 using CMS.API.Models;
+using CMS.API.Services;
 using Dapper;
 
 namespace CMS.API.Repositories;
 
 public sealed class AppUserRepository : IAppUserRepository
 {
+    private const string TableName = "AppUser";
+
     private readonly IDbConnectionFactory _factory;
     private readonly ISysConfigRepository _sysConfig;
+    private readonly IRowAuditWriter _audit;
 
-    public AppUserRepository(IDbConnectionFactory factory, ISysConfigRepository sysConfig)
+    public AppUserRepository(IDbConnectionFactory factory, ISysConfigRepository sysConfig, IRowAuditWriter audit)
     {
         _factory = factory;
         _sysConfig = sysConfig;
+        _audit = audit;
     }
 
     // PasswordHash is NEVER in a SELECT list — it must not reach a client.
@@ -21,6 +26,27 @@ public sealed class AppUserRepository : IAppUserRepository
     private const string SelectColumns = @"
         u.pkid, u.UserId, u.UserName, u.IsActive, u.PasswordUpdatedTime,
         (SELECT COUNT(*) FROM AppUserRole ur WHERE ur.UserId = u.UserId) AS RoleCount";
+
+    /// <summary>
+    /// Row image on the caller's connection/transaction — the audit before/after compare. Selects
+    /// the real AppUser columns (never PasswordHash — the AppUser model has no such property, so it
+    /// cannot reach an audit row either) plus the junction RoleIds, but NOT the derived RoleCount,
+    /// which would report every membership change twice.
+    /// </summary>
+    private static async Task<AppUser?> SnapshotAsync(
+        IDbConnection conn, IDbTransaction tx, string userId, CancellationToken ct)
+    {
+        var user = await conn.QuerySingleOrDefaultAsync<AppUser>(new CommandDefinition(
+            "SELECT u.pkid, u.UserId, u.UserName, u.IsActive, u.PasswordUpdatedTime FROM AppUser u WHERE u.UserId = @userId;",
+            new { userId }, tx, cancellationToken: ct));
+        if (user is null) return null;
+
+        var roleIds = await conn.QueryAsync<string>(new CommandDefinition(
+            "SELECT RoleId FROM AppUserRole WHERE UserId = @userId ORDER BY RoleId ASC;",
+            new { userId }, tx, cancellationToken: ct));
+        user.RoleIds = roleIds.ToList();
+        return user;
+    }
 
     public async Task<IEnumerable<AppUser>> GetAllAsync(CancellationToken ct = default)
     {
@@ -108,9 +134,8 @@ public sealed class AppUserRepository : IAppUserRepository
             tx, cancellationToken: ct));
 
         await ReplaceRolesAsync(conn, tx, request.UserId, request.RoleIds, ct);
-        tx.Commit();
 
-        return new AppUser
+        var created = new AppUser
         {
             Pkid = pkid,
             UserId = request.UserId,
@@ -120,6 +145,10 @@ public sealed class AppUserRepository : IAppUserRepository
             RoleCount = request.RoleIds.Distinct().Count(),
             RoleIds = request.RoleIds
         };
+
+        await _audit.LogInsertAsync(conn, tx, TableName, created, ct);
+        tx.Commit();
+        return created;
     }
 
     public async Task<bool> UpdateAsync(AppUserRequest request, CancellationToken ct = default)
@@ -127,9 +156,19 @@ public sealed class AppUserRepository : IAppUserRepository
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
         using var tx = conn.BeginTransaction();
 
+        // The "before" image feeds the audit's changed-column list. A missing user returns false —
+        // the same outcome the affected == 0 branch used to produce.
+        var before = await SnapshotAsync(conn, tx, request.UserId, ct);
+        if (before is null)
+        {
+            tx.Rollback();
+            return false;
+        }
+
         // UserId is the immutable logical key. PasswordHash and PasswordUpdatedTime are absent from
-        // the SET list by design — an update must never alter the password. A reset flows through a
-        // dedicated endpoint (not built yet; see spec/auth/AppUser.md).
+        // the SET list by design — an update must never alter the password. Password writes flow
+        // through IAuthRepository instead: UpdatePasswordAsync, used by 變更密碼 and by the Admin
+        // reset-to-default (see spec/auth/AppUser.md, spec/auth/Profile.md).
         const string updateSql = @"
             UPDATE AppUser
                SET UserName = @UserName,
@@ -145,6 +184,9 @@ public sealed class AppUserRepository : IAppUserRepository
         }
 
         await ReplaceRolesAsync(conn, tx, request.UserId, request.RoleIds, ct);
+
+        var after = await SnapshotAsync(conn, tx, request.UserId, ct);
+        await _audit.LogUpdateAsync(conn, tx, TableName, before, after!, ct);
         tx.Commit();
         return true;
     }
@@ -153,6 +195,15 @@ public sealed class AppUserRepository : IAppUserRepository
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
         using var tx = conn.BeginTransaction();
+
+        // Load first — after the DELETE the row's UserId (the audit ActionDesc) is gone. A missing
+        // user short-circuits to false, which is what "DELETE affected 0 rows" reported before.
+        var row = await SnapshotAsync(conn, tx, userId, ct);
+        if (row is null)
+        {
+            tx.Rollback();
+            return false;
+        }
 
         // FK_AppUserRole_AppUser does NOT cascade, so the junction rows must go first
         // (same as AppRoleRepository.DeleteAsync).
@@ -163,8 +214,15 @@ public sealed class AppUserRepository : IAppUserRepository
             "DELETE FROM AppUser WHERE UserId = @userId;",
             new { userId }, tx, cancellationToken: ct));
 
+        if (affected == 0)
+        {
+            tx.Rollback();
+            return false;
+        }
+
+        await _audit.LogDeleteAsync(conn, tx, TableName, row, ct);
         tx.Commit();
-        return affected > 0;
+        return true;
     }
 
     /// <summary>N-N sync: delete-then-reinsert the AppUserRole rows for a user.</summary>

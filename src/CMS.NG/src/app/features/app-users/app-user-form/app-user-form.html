@@ -1,10 +1,12 @@
 <div class="page">
   <p-toast />
+  <p-confirmDialog />
 
   <form [formGroup]="form" (ngSubmit)="save()">
     <div class="card page-header">
       <div class="page-header__titles">
         <h1 class="page-header__title">{{ isEdit() ? '編輯使用者' : '新增使用者' }}</h1>
+        <app-row-audit-badge tableName="AppUser" [pkid]="recordPkid()" />
       </div>
       <div class="page-header__actions">
         <p-button
@@ -74,7 +76,8 @@
           </div>
 
           <!-- No password field, in either mode. On create the API hashes the system default;
-               update never touches the hash. -->
+               update never touches the hash. An Admin may reset it back to that default — which
+               still sends no password, only the UserId. -->
           @if (isEdit()) {
             <div class="field">
               <label>密碼更新時間</label>
@@ -86,6 +89,25 @@
                 <span class="readonly-value muted">未變更（仍為系統預設密碼）</span>
               }
               <small class="field-hint">密碼不可於此頁編輯。</small>
+
+              <!-- Admin only. Presentation: the API returns 403 regardless (see the component). -->
+              @if (canResetPassword()) {
+                <div class="reset-password">
+                  <p-button
+                    label="重設密碼為預設值 Reset Password to Default"
+                    icon="pi pi-refresh"
+                    severity="danger"
+                    [outlined]="true"
+                    type="button"
+                    data-testid="reset-password"
+                    [loading]="resetting()"
+                    (onClick)="resetPassword()"
+                  />
+                  <small class="field-hint">
+                    將此使用者的密碼重設為系統預設密碼，該使用者目前的密碼會立即失效。
+                  </small>
+                </div>
+              }
             </div>
           } @else {
             <div class="field">

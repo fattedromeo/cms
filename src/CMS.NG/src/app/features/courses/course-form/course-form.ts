@@ -17,6 +17,7 @@ import { MessageService } from 'primeng/api';
 
 import { CourseService } from '@core/services/course.service';
 import { CourseRequest } from '@core/models/course.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 import { LookupItem } from '@core/models/lookup-item.model';
 import { addYears, fromIso, toIso } from '@core/utils/date.util';
 
@@ -68,6 +69,7 @@ const TAB_ORDER = ['basic', 'publish', 'content', 'relations'];
     CheckboxModule,
     ButtonModule,
     ToastModule,
+    RowAuditBadge,
   ],
   providers: [MessageService],
   templateUrl: './course-form.html',
@@ -84,6 +86,8 @@ export class CourseForm implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly activeTab = signal<string>('basic');
+  /** The loaded record's pkid, for the 異動紀錄 badge; null in create mode (no history yet). */
+  protected readonly recordPkid = signal<number | null>(null);
 
   protected readonly partnerOptions = signal<LookupItem[]>([]);
   protected readonly courseGroupOptions = signal<LookupItem[]>([]);
@@ -152,6 +156,7 @@ export class CourseForm implements OnInit {
         this.jobCategoryOptions.set(jobCategories);
 
         if (course) {
+          this.recordPkid.set(course.pkid);
           this.form.patchValue({
             pkid: course.pkid,
             title: course.title,

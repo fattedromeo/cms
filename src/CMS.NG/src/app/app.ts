@@ -1,5 +1,8 @@
-import { Component, signal } from '@angular/core';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, computed, inject, signal } from '@angular/core';
+import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { ToastModule } from 'primeng/toast';
+import { ADMIN_ROLE } from '@core/models/auth.model';
+import { AuthService } from '@core/services/auth.service';
 
 interface NavChild {
   label: string;
@@ -15,16 +18,30 @@ interface NavGroup {
   icon: string;
   children: NavChild[];
   expanded?: boolean;
+  /** RoleId required to see this group at all. Undefined = visible to every signed-in user. */
+  requiresRole?: string;
 }
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastModule],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
 export class App {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+
   protected readonly collapsed = signal(false);
+
+  /** Drives whether the shell renders at all — the login page must appear on its own. */
+  protected readonly isAuthenticated = this.auth.isAuthenticated;
+  protected readonly userName = this.auth.userName;
+
+  protected logout(): void {
+    this.auth.logout();
+    void this.router.navigate(['/login']);
+  }
 
   /**
    * Sidebar navigation. Only 系統管理 Admin / 角色 AppRole is wired to a route in this
@@ -48,6 +65,10 @@ export class App {
       label: '課程管理',
       labelEn: 'Course',
       icon: 'pi pi-folder',
+      // Expanded by default now that /courses is the landing route for every role. Previously only
+      // 系統管理 was, which since it is hidden from non-Admins would leave them staring at a fully
+      // collapsed menu on the page they just landed on.
+      expanded: true,
       children: [
         { label: '課程', labelEn: 'Course', icon: 'pi pi-book', route: '/courses' },
         { label: '合作廠商', labelEn: 'Partner', icon: 'pi pi-building', route: '/partners' },
@@ -64,6 +85,9 @@ export class App {
       labelEn: 'Admin',
       icon: 'pi pi-shield',
       expanded: true,
+      // Hidden for non-Admins. Presentation only: the boundary is [Authorize(Roles = "Admin")] on
+      // the matching API controllers, with adminGuard keeping the routes consistent with it.
+      requiresRole: ADMIN_ROLE,
       children: [
         { label: '角色', labelEn: 'AppRole', icon: 'pi pi-id-card', route: '/app-roles' },
         { label: '使用者', labelEn: 'AppUser', icon: 'pi pi-user', route: '/app-users' },
@@ -76,6 +100,11 @@ export class App {
       ],
     },
   ]);
+
+  /** What the sidebar actually renders: groups the signed-in user's roles allow. */
+  protected readonly visibleNavGroups = computed(() =>
+    this.navGroups().filter((g) => !g.requiresRole || this.auth.hasRole(g.requiresRole)),
+  );
 
   toggleCollapsed(): void {
     this.collapsed.update((c) => !c);

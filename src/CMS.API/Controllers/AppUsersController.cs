@@ -1,12 +1,19 @@
 using CMS.API.Models;
 using CMS.API.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.API.Controllers;
 
+/// <remarks>
+/// 系統管理 Admin → 使用者. <b>Admin-only</b>: this is where the API enforces it. The sidebar hides
+/// 系統管理 for non-Admins, but a hidden menu is not a boundary — anyone can type the URL or call the
+/// endpoint directly, so the role check has to live here to mean anything.
+/// </remarks>
 [ApiController]
 [Route("api/app-users")]
 [Produces("application/json")]
+[Authorize(Roles = AdminRole.Name)]
 public class AppUsersController : ControllerBase
 {
     private readonly IAppUserRepository _repository;

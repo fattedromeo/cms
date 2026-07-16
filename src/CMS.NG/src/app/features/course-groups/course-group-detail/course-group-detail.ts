@@ -5,10 +5,11 @@ import { ButtonModule } from 'primeng/button';
 
 import { CourseGroupService } from '@core/services/course-group.service';
 import { CourseGroup } from '@core/models/course-group.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 @Component({
   selector: 'app-course-group-detail',
-  imports: [CommonModule, ButtonModule],
+  imports: [CommonModule, ButtonModule, RowAuditBadge],
   templateUrl: './course-group-detail.html',
   styleUrl: './course-group-detail.scss',
 })

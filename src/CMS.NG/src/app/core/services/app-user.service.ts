@@ -41,4 +41,18 @@ export class AppUserService {
   getRoleOptions(): Observable<LookupItem[]> {
     return this.http.get<LookupItem[]>(`${this.lookupUrl}/app-roles`);
   }
+
+  /**
+   * Resets a user's password back to the system default. **Admin only** — enforced by the API
+   * (`[Authorize(Roles = "Admin")]` → 403), not by hiding the button.
+   *
+   * 🔐 Sends only the target UserId, and receives 204 with no body. The default password lives in
+   * SysConfig and is hashed server-side; no password or hash ever reaches this client.
+   *
+   * Lives here rather than in `AuthService` — despite the `/api/auth` route — because AuthService is
+   * about the *current session*, and this is an administrator acting on another AppUser.
+   */
+  resetPasswordToDefault(userId: string): Observable<void> {
+    return this.http.post<void>(`${environment.apiUrl}/auth/reset-password`, { userId });
+  }
 }

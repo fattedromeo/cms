@@ -12,6 +12,7 @@ import { MessageService } from 'primeng/api';
 
 import { AppRoleService } from '@core/services/app-role.service';
 import { AppRoleRequest } from '@core/models/app-role.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 import { LookupItem } from '@core/models/lookup-item.model';
 
 @Component({
@@ -24,6 +25,7 @@ import { LookupItem } from '@core/models/lookup-item.model';
     MultiSelectModule,
     ButtonModule,
     ToastModule,
+    RowAuditBadge,
   ],
   providers: [MessageService],
   templateUrl: './app-role-form.html',
@@ -40,6 +42,8 @@ export class AppRoleForm implements OnInit {
   protected readonly loading = signal(true);
   protected readonly saving = signal(false);
   protected readonly userOptions = signal<LookupItem[]>([]);
+  /** The loaded record's pkid, for the 異動紀錄 badge; null in create mode (no history yet). */
+  protected readonly recordPkid = signal<number | null>(null);
 
   private originalPkid = 0;
 
@@ -61,6 +65,7 @@ export class AppRoleForm implements OnInit {
         this.userOptions.set(users);
         if (role) {
           this.originalPkid = role.pkid;
+          this.recordPkid.set(role.pkid);
           this.form.patchValue({
             roleId: role.roleId,
             roleName: role.roleName,

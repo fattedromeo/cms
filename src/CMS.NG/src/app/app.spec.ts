@@ -1,38 +1,159 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { MessageService } from 'primeng/api';
 import { App } from './app';
+import { AuthService } from '@core/services/auth.service';
+import { signInAs } from '@core/testing/auth-test-utils';
 
 describe('App (shell)', () => {
-  beforeEach(async () => {
-    await TestBed.configureTestingModule({
+  /**
+   * Seeds the session BEFORE configuring the TestBed: AuthService reads session storage once when
+   * it is constructed, so signing in afterwards would leave the shell thinking it is signed out.
+   */
+  function setup(roles: string[] | null) {
+    sessionStorage.clear();
+    if (roles) signInAs(roles);
+
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
-    }).compileComponents();
-  });
+      providers: [
+        provideRouter([]),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        // The shell's global <p-toast> needs animations and the root MessageService it listens to
+        // (provided by app.config.ts in the real app).
+        provideNoopAnimations(),
+        MessageService,
+      ],
+    });
 
-  it('should create the app', () => {
-    const fixture = TestBed.createComponent(App);
-    expect(fixture.componentInstance).toBeTruthy();
-  });
-
-  it('should render the UWA brand', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
+    return fixture;
+  }
+
+  const navLinks = (fixture: ReturnType<typeof setup>) =>
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('a.nav-item')).map(
+      (a) => a.textContent ?? '',
+    );
+
+  const groupLabels = (fixture: ReturnType<typeof setup>) =>
+    Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('.nav-group__label')).map(
+      (e) => e.textContent ?? '',
+    );
+
+  afterEach(() => sessionStorage.clear());
+
+  it('should create the app', () => {
+    expect(setup(['Admin']).componentInstance).toBeTruthy();
+  });
+
+  it('should render the UWA brand when signed in', () => {
+    const compiled = setup(['Admin']).nativeElement as HTMLElement;
     expect(compiled.querySelector('.sidebar__brand-text')?.textContent).toContain('UWA');
   });
 
-  it('should render the 系統管理 Admin group with a 角色 AppRole link', () => {
-    const fixture = TestBed.createComponent(App);
+  // --- The shell is only for signed-in users ------------------------------
+  it('renders no sidebar or topbar when signed out', () => {
+    // The login page must appear on its own — a sidebar full of links the user cannot use (and a
+    // logout button for a session that does not exist) would be nonsense.
+    const compiled = setup(null).nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.sidebar')).toBeNull();
+    expect(compiled.querySelector('.topbar')).toBeNull();
+  });
+
+  // --- Signed-in chrome ---------------------------------------------------
+  it('shows the signed-in UserName in the header', () => {
+    const compiled = setup(['User']).nativeElement as HTMLElement;
+
+    expect(compiled.querySelector('.topbar__user-name')?.textContent).toContain('Miles Sun');
+  });
+
+  it('has a My Profile link in the shell', () => {
+    const compiled = setup(['User']).nativeElement as HTMLElement;
+
+    const links = Array.from(compiled.querySelectorAll<HTMLAnchorElement>('.topbar a'));
+    expect(links.some((a) => a.getAttribute('href') === '/profile')).toBeTrue();
+    expect(links.some((a) => (a.textContent ?? '').includes('個人資料'))).toBeTrue();
+  });
+
+  it('renders the UserName from the auth signal, so a rename updates the header live', () => {
+    const fixture = setup(['User']);
+    const auth = TestBed.inject(AuthService);
+    expect((fixture.nativeElement as HTMLElement).querySelector('.topbar__user-name')?.textContent)
+      .toContain('Miles Sun');
+
+    // What Profile's save does via AuthService.updateProfile — the header must follow.
+    (auth as unknown as { _profile: { set: (v: unknown) => void } })._profile.set({
+      userId: 'miles@uuu.com.tw',
+      userName: 'Renamed Live',
+      accessToken: 'x.y.z',
+    });
     fixture.detectChanges();
-    const compiled = fixture.nativeElement as HTMLElement;
-    const links = Array.from(compiled.querySelectorAll('a.nav-item')).map((a) => a.textContent);
-    expect(links.some((t) => t?.includes('角色 AppRole'))).toBeTrue();
+
+    expect((fixture.nativeElement as HTMLElement).querySelector('.topbar__user-name')?.textContent)
+      .toContain('Renamed Live');
+  });
+
+  it('logout clears the session and leaves the shell', () => {
+    const fixture = setup(['Admin']);
+    const auth = TestBed.inject(AuthService);
+    expect(auth.isAuthenticated()).toBeTrue();
+
+    (fixture.nativeElement as HTMLElement)
+      .querySelector<HTMLButtonElement>('.topbar__logout')!
+      .click();
+    fixture.detectChanges();
+
+    expect(auth.isAuthenticated()).toBeFalse();
+    expect(sessionStorage.getItem('cms-auth')).toBeNull();
+    expect((fixture.nativeElement as HTMLElement).querySelector('.sidebar')).toBeNull();
+  });
+
+  // --- 系統管理 Admin is role-gated ---------------------------------------
+  it('shows 系統管理 Admin when the roles include Admin', () => {
+    const fixture = setup(['Admin', 'developer', 'User']);
+
+    expect(groupLabels(fixture).some((t) => t.includes('系統管理'))).toBeTrue();
+    expect(navLinks(fixture).some((t) => t.includes('角色 AppRole'))).toBeTrue();
+    expect(navLinks(fixture).some((t) => t.includes('使用者 AppUser'))).toBeTrue();
+  });
+
+  it('hides 系統管理 Admin when the roles do not include Admin', () => {
+    const fixture = setup(['developer', 'User']);
+
+    expect(groupLabels(fixture).some((t) => t.includes('系統管理'))).toBeFalse();
+    // Its children must go too — hiding the group header alone would still leave the links.
+    expect(navLinks(fixture).some((t) => t.includes('角色 AppRole'))).toBeFalse();
+    expect(navLinks(fixture).some((t) => t.includes('使用者 AppUser'))).toBeFalse();
+    expect(navLinks(fixture).some((t) => t.includes('發布狀態 PublishStatus'))).toBeFalse();
+  });
+
+  it('hides 系統管理 Admin for a user with no roles at all', () => {
+    expect(groupLabels(setup([])).some((t) => t.includes('系統管理'))).toBeFalse();
+  });
+
+  it('is case-sensitive: "admin" does not unlock 系統管理', () => {
+    // Agrees with the API, where [Authorize(Roles = "Admin")] compares ordinally — otherwise the
+    // menu would offer pages the API then answers with 403.
+    expect(groupLabels(setup(['admin'])).some((t) => t.includes('系統管理'))).toBeFalse();
+  });
+
+  it('still shows the non-admin groups to a non-Admin', () => {
+    // Guards against over-filtering: only 系統管理 is gated.
+    const fixture = setup(['User']);
+
+    expect(groupLabels(fixture).some((t) => t.includes('課程管理'))).toBeTrue();
+    expect(navLinks(fixture).some((t) => t.includes('課程 Course'))).toBeTrue();
   });
 
   it('toggleCollapsed flips the collapsed state', () => {
-    const fixture = TestBed.createComponent(App);
-    const app = fixture.componentInstance as unknown as {
+    const app = setup(['Admin']).componentInstance as unknown as {
       collapsed: () => boolean;
       toggleCollapsed: () => void;
     };

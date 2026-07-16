@@ -4,6 +4,7 @@
       <h1 class="page-header__title">檢視課程</h1>
       @if (course()) {
         <span class="page-header__subtitle">{{ course()!.courseId }} {{ course()!.title }}</span>
+        <app-row-audit-badge tableName="Course" [pkid]="course()!.pkid" />
       }
     </div>
     <div class="page-header__actions">

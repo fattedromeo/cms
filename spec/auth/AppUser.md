@@ -220,7 +220,7 @@ No date-range filter on `PasswordUpdatedTime` — not a useful search axis for 1
 Route `{id}` has **no `:int` constraint** (string PK). No auth attributes — consistent with the
 existing controllers.
 
-> **Reset-password endpoint: NOT built in this pass** — see *Open Question* below.
+> **Reset-password endpoint: now BUILT** (Admin-only, 重設密碼為預設值 on the edit form) — see below.
 
 ---
 
@@ -343,6 +343,13 @@ catches it → 409 (`此使用者仍被其他資料使用，無法刪除。`), c
   `DateTime?` with **no Dapper type handler** — the `DateOnlyTypeHandler` added for `Course` is for
   `date`/`DateOnly` only; `datetime` ↔ `DateTime` is natively supported. See *Open Question* for what
   value create should write.
+  - **Now verified in the write direction too**: 變更密碼 (`spec/auth/Profile.md`) is the first code
+    to send a **non-NULL** `DateTime` parameter for this column, and Dapper accepts it with no
+    handler — unlike `DateOnly`, whose parameters throw. Confirmed live (transaction + rollback):
+    0.7 ms round-trip drift, within `datetime`'s ~3.33 ms resolution.
+  - **It is written as `DateTime.UtcNow`** — decided with the user, and consistent with the `'Z'`
+    display rule below. ⚠️ The one pre-existing value came from the **external login app**; if that
+    writes local time, the column holds two meanings. Not resolvable from the data.
 - Frontend display of `PasswordUpdatedTime` **must** append `'Z'`
   (`{{ u.passwordUpdatedTime + 'Z' | date:'yyyy/MM/dd HH:mm' }}`) — Dapper returns `datetime` with
   `Kind = Unspecified`, so the browser would otherwise read UTC as local
@@ -512,20 +519,69 @@ Pure function, no DB — worth real coverage since it is security-relevant:
 
 ---
 
-## Decided — reset-password endpoint deferred
+## ✅ Reset password to default — BUILT (was deferred)
 
-The instruction says PasswordHash is untouched on update *"unless a separate reset-password endpoint
-is called"*, which implies such an endpoint but does not ask for one. **Confirmed deferred — not
-built in this pass.** Consequence to be aware of: there is no way to reset a forgotten password from
-this console until it is built.
-
-When wanted, the agreed shape is:
+Previously deferred; now built as 重設密碼為預設值 on the **edit** form. The console can reset a
+forgotten password.
 
 | Method | Route | Body | Behaviour |
 |--------|-------|------|-----------|
-| `POST` | `/api/app-users/{id}/reset-password` | none | Re-hash `SysConfig.appConfig.defaultPassword`, set `PasswordUpdatedTime = NULL`, return 204 |
+| `POST` | `/api/auth/reset-password` | `{ userId }` | Re-hash `SysConfig.appConfig.defaultPassword`, set `PasswordUpdatedTime = **NULL**`, return 204 |
 
-Taking no body keeps a caller from setting an arbitrary password and keeps plaintext off the wire.
+Two deltas from the shape agreed here originally, both deliberate:
+
+- **Route** is `/api/auth/reset-password` (as specified in the request) rather than
+  `/api/app-users/{id}/reset-password`, so it sits with the other password endpoints on
+  `AuthController`. The frontend call still lives in `AppUserService`, not `AuthService` — the latter
+  is about the *current session*, and this is an admin acting on someone else.
+- **It takes a body** (`{ userId }`) rather than a route param. The original "no body" rationale was
+  *"keeps a caller from setting an arbitrary password and keeps plaintext off the wire"* — still
+  honoured, because `ResetPasswordRequest` has a UserId and **nothing else**. There is no password
+  property to over-post.
+
+**`PasswordUpdatedTime = NULL` was re-confirmed with the user**, against a request for "now". NULL is
+this schema's signal for "still on the default password, never chosen" — which is exactly true after
+a reset, and is what create writes for the same state. A timestamp would claim the user chose the
+shared, publicly-known default and would defeat any force-a-change-at-first-sign-in keyed off NULL.
+Pleasant consequence: this form already renders 「未變更（仍為系統預設密碼）」 when the column is NULL,
+so a reset makes the page tell the truth with no extra UI.
+
+### 🔐 Access control
+
+`[Authorize(Roles = AdminRole.Name)]` → **403** for a non-Admin. That attribute is the boundary. The
+hidden button and the `adminGuard` on `/app-users` are the other two layers, and neither is a
+control: anyone can call the endpoint directly. This is the only auth endpoint that acts on an
+account **other than the caller's**, so it is the only one where the role check is what stands
+between any signed-in user and everybody else's password. Covered over the real pipeline in
+`AuthorizationIntegrationTests` — a unit test never runs `[Authorize]` and cannot prove it.
+
+### Verified against the dev DB (transaction + rollback)
+
+Every other test mocks `ISysConfigRepository`, so none of them prove the reset uses the **real**
+configured default. This did, then rolled back — dev data left exactly as found. 🔐 Only booleans were
+printed; never the default password or its hash.
+
+| Checked | Result |
+|---------|--------|
+| Real `SysConfig['appConfig'].defaultPassword` | read; hash is 64 lowercase hex |
+| `PasswordHash` after reset | `== SHA256(real default)` |
+| **`PasswordUpdatedTime`** | **IS NULL** |
+| `null` `DateTime?` param | accepted by Dapper, binds to SQL NULL |
+| Only those two columns move | `UserName`, `IsActive`, RoleCount unchanged |
+| Rows affected, unknown user | `0` → 404 |
+| After `ROLLBACK` | hash and timestamp restored |
+
+(`miles@uuu.com.tw` was **not** already on the default — confirming the note above that this user
+changed their password, which is why their hash never matched `SHA256(defaultPassword)`.)
+
+### Still not built
+
+- **No notification.** The account holder is not told their password was reset; their current one
+  simply stops working. The confirm dialog says so.
+- **No audit trail.** `RowAudit` exists in `database/admin.sql` but nothing in this app writes it —
+  and with `PasswordUpdatedTime` deliberately NULL, a reset leaves *no* record of who did it or when.
+  That is the price of the NULL semantics; if an audit trail is ever needed it must go somewhere else.
+- **An Admin can reset their own password**, and nothing stops an Admin resetting another Admin.
 
 Related, **decided: `PasswordUpdatedTime` is written as `NULL` on create.** It is nullable, and
 `appConfig` sets `enforcePasswordPolicy: true`, which suggests the login app may treat **NULL as

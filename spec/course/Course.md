@@ -232,6 +232,31 @@ INSERT INTO CourseInCertification (Course_pkid, Certification_pkid) VALUES (@Pki
 
 Distinct + empty-list guard before insert (as `ReplaceUsersAsync` does).
 
+### ⚠️ `PUT /api/courses` is a full replace — a list row is not a safe body
+
+`UpdateAsync` always runs the two `Replace…Async` helpers above, so **whatever the request carries
+is the new junction state**. But `QueryAsync` / `GetAllAsync` never populate `CertificationPkids` /
+`JobCategoryPkids` — only `GetByIdAsync` runs the two junction SELECTs, so a course from
+`POST /api/courses/query` always reports **empty** lists.
+
+PUT a list row back and both junctions are silently emptied: **HTTP 204, no exception**, and the
+controller tests mock the repository so nothing fails. Observed on the dev DB against course 42
+(`CCNP`):
+
+| Step | `certificationPkids` | `jobCategoryPkids` |
+|------|----------------------|--------------------|
+| `GET /api/courses/42` | `[7]` | `[1,15]` |
+| `POST /api/courses/query` (same course) | `[]` | `[]` |
+| `PUT` of that list row → 204 | `[]` | `[]` — **rows deleted** |
+
+Exposure is not marginal: 1,048 `CourseJobCategories` rows across 751 courses and 113
+`CourseInCertification` rows across 94 courses.
+
+**Any writer that did not start from `GetByIdAsync` must re-read before it PUTs.** The list page's
+inline editing does exactly that — see [List inline editing](#list-inline-editing). A `PATCH`
+endpoint that never touches the junctions would remove the hazard structurally; it does not exist
+yet.
+
 ---
 
 ## Query Filters
@@ -638,6 +663,50 @@ Columns, in the supplied order (all sortable):
 - `canRepeat` renders as 是 / 否.
 - `listPrice` → `| number`; `scheduleOn`/`scheduleOff` → `| date:'yyyy/MM/dd'`.
 - Default sort `sortField = 'courseId'`, `sortOrder = 1`. Default `rows = 20`.
+
+### List inline editing
+
+Double-click a cell to edit, blur to save. **The three FK/key columns are read-only**: 主代碼
+(immutable identity), 原廠 and 課程群組 (nav objects from the JOIN). Read-only is expressed as the
+*absence* of a `(dblclick)` handler and editor, not a flag.
+
+**Not `pEditableColumn`.** PrimeNG v20 wires that directive's host listener to `click`
+(`primeng/table` → `host: { listeners: { "click": "onClick($event)" } }`) and offers no
+double-click mode, so it cannot satisfy "single click must not edit". The open/close trigger is
+component state (`editing` signal + `@if`); the editors themselves are still PrimeNG inputs.
+
+**Saving re-reads first.** `commit()` → `getById(pkid)` → apply the one edited field to *that* →
+`update()`. This is mandatory, not an optimisation: PUTting the list row would silently wipe the
+course's junction rows — see
+[PUT is a full replace](#️-put-apicourses-is-a-full-replace--a-list-row-is-not-a-safe-body).
+Using the re-read as the merge base also avoids writing stale values from a list loaded minutes ago.
+
+Validation runs before the PUT; a failure keeps the cell open with an inline message, and a failed
+*save* closes the cell leaving the row's old value on screen (`applyToRow` only runs on success).
+**The bounds are the SQL Server column types, not form preference** — each of these fails at the DB,
+not in the browser:
+
+| Column | Type | Rule |
+|--------|------|------|
+| 顯示順序 `displayOrder` | `int` | required, integer, ≥ 0 |
+| 簡介代碼 / 科目代碼 | `varchar(50)` | required, ≤ 50 |
+| 課程名稱 `title` | `nvarchar(200)` | required, ≤ 200 |
+| 上架狀態 | `tinyint` FK | required (dropdown; options need `Number()` — `LookupItem.pkid` is a string) |
+| 上架/下架日期 | `date` | required, valid, **`scheduleOn ≤ scheduleOff`** |
+| 時數 `hour` | `smallint` | required, integer, 0–32767 |
+| 定價 `listPrice` | `decimal(9,0)` | required, **integer** (scale 0 → SQL Server silently rounds a fraction), ≤ 999999999 |
+| 點數 `learningCredit` | `decimal(9,1)` | required, ≥ 0, **≤ 1 dp** — *not* an integer editor |
+| 允許重聽 `canRepeat` | `bit` | none (checkbox) |
+
+- **點數 is fractional in real data** — 387 of 1,080 rows (5.5, 2.5, 22.5). An integer editor would
+  round them away on the next edit of any *other* cell in the row.
+- **The date rule is `≤`, not `<`**: 4 dev rows legitimately have `ScheduleOn = ScheduleOff`.
+- **One dev row already violates it** — pkid 1980 (`NINS-1`): `2023-02-17` → `2013-12-17`, a
+  1-digit typo. Its date cells can't be saved until one side is corrected; the other columns on that
+  row edit normally. Pre-existing, not caused by this rule.
+- Editing 上架狀態 must **relabel `publishStatus.description`** from the lookup — the cell renders
+  the nav object, not the FK, so the old label would otherwise persist until reload.
+- Dates go through `toIso`, never `toISOString()`, which would shift the day back in UTC+8.
 - 16 columns is wide → wrap the table in `.table-scroll { overflow-x: auto }`.
 
 Filter drawer (`p-drawer`, position right):
@@ -756,57 +825,14 @@ labels (loaded via the two lookups). Toolbar: 返回 / 編輯. No Primary-Foreig
 
 ### Detail — QR Code
 
-Lives in the **基本資料** card, beside the field list (`.basic-layout` flex; it drops below the list
-on a narrow viewport). Generated client-side on course load — there is no QR endpoint.
+The 基本資料 card carries a QR code to the public course site, generated client-side (there is no QR
+endpoint). It encodes
+`{environment.publicSiteUrl}/Course/Show/{pkid}/{encodeURIComponent(courseId)}` — note
+`publicSiteUrl`, **not** `apiUrl`, and note the `encodeURIComponent`: **`CourseId` is not URL-safe**
+(15 of 1,080 dev rows hold spaces, parens or CJK).
 
-| Item | Value |
-|------|-------|
-| Encodes | `{environment.publicSiteUrl}/Course/Show/{pkid}/{encodeURIComponent(courseId)}` |
-| Title | `courseId` — HTML caption on the page, **and** drawn into the downloaded PNG |
-| Download | `下載 QR Code` → composited PNG named `{courseId.trim()}.png` |
-
-**Base URL is `environment.publicSiteUrl`** (`https://www.uuu.com.tw` in both env files), *not*
-`apiUrl` — it points at the public course site, not this API. Kept out of the component so the
-domain is swappable.
-
-#### ⚠️ `CourseId` is not URL-safe — `encodeURIComponent` is mandatory
-
-Verified against the dev DB: **15 of the 1,080 rows** hold characters outside `[A-Za-z0-9._-]` —
-spaces (`AIteam-Open Source`), **trailing** spaces (pkid 2103 = `23aiNFA `), parentheses
-(`DO180(NO)`), and one CJK value (pkid 1319 = `Python-程式設計開發應用`). Raw interpolation would
-emit a broken URL for those rows. `pkid` is an int and needs no encoding.
-
-The QR encodes the **stored value verbatim** — `23aiNFA ` becomes `.../2103/23aiNFA%20`, not a
-trimmed variant, so the QR always resolves to exactly the CourseId the record holds. The *filename*
-is the one place that trims, since a trailing space does not survive a filesystem anyway.
-
-> Verified end-to-end by generating and **decoding** the QR for all five awkward rows: each scans
-> back to the intended URL, including the CJK one (`%E7%A8%8B…`) and the trailing space. The
-> composited PNG (caption drawn on) still scans — the caption band does not intrude on the symbol.
-
-#### Library
-
-`qrcode` (node-qrcode) **1.5.4** + `@types/qrcode`. PrimeNG v20 has **no** QR component (v21 added
-one, but that needs Angular 21 — see the v20 pin in `spec/reference/frontend.md`). `qrcode` was
-chosen over `angularx-qrcode` precisely because it is framework-agnostic: its version does not track
-Angular's, so it cannot repeat the PrimeNG-v21 pinning trap.
-
-It is **CommonJS**, so it must be listed in `angular.json` → `allowedCommonJsDependencies`,
-otherwise every prod build prints an optimization-bailout warning. It costs the initial bundle
-**nothing** — it resolves into the lazy `course-detail` chunk (34 kB).
-
-Options: `{ errorCorrectionLevel: 'M', margin: 2, width: 220 }`.
-
-#### Canvas compositing
-
-The on-page QR is **bare** (`toDataURL`) with the caption as HTML; the download composites via
-`toCanvas` onto a canvas `CAPTION_BAND_PX` (34) taller, then draws the caption centred in the band:
-
-- **Paint the white background first.** `qrcode`'s own margin is *transparent*, so a PNG saved
-  without the `fillRect` carries a transparent surround — which renders black in many image viewers
-  and can defeat scanners that rely on the quiet zone.
-- `fillText`'s **`maxWidth`** argument is passed (`canvas.width - 16`): CourseId runs to 18 chars in
-  the dev data, which overflows 220 px at 16 px bold. `maxWidth` condenses instead of overflowing.
+**Full spec: [`spec/course/CourseQRCode.md`](CourseQRCode.md)** — layout, the URL-safety hazard, the
+library choice, canvas compositing and the QR tests.
 
 ### Sub-panels (edit mode only)
 
@@ -847,11 +873,7 @@ Mock `ICourseRepository` with `MockBehavior.Strict`; no live DB. Mirrors `Course
 - `course-list.spec.ts` — loads via `query` on init; renders nav-object labels; incoming
   `courseGroupPkid` param overrides saved filters; applyFilters persists + re-queries; clear resets.
 - `course-detail.spec.ts` — loads by numeric id; renders nav links; null courseGroup renders `—`.
-  **QR:** builds the URL from pkid/courseId; percent-encodes an unsafe courseId and does **not**
-  trim it; renders the image + caption; download produces a `data:image/png` named
-  `{courseId}.png`. The compositing test decodes the PNG and asserts **real ink in the caption
-  band** — an assertion on canvas height alone passes against a blank band (confirmed by mutating
-  out the `fillText`).
+  Its `describe('QR code')` block is specced in `spec/course/CourseQRCode.md`.
 - `course-form.spec.ts` — add mode invalid until required fields filled; create sends `pkid: 0`;
   `scheduleOff` auto-defaults to +10y on `scheduleOn` change; edit mode patches, keeps `pkid`
   disabled, and the loaded `scheduleOff` survives the auto-default subscription.

@@ -10,6 +10,7 @@ import {
   FeaturedPromoItemRequest,
 } from '@core/models/featured-promo-item.model';
 import { LookupItem } from '@core/models/lookup-item.model';
+import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
 
 /** Shape PrimeNG's AutoComplete passes to `completeMethod`. */
 interface CompleteEvent {
@@ -26,7 +27,7 @@ interface CompleteEvent {
  */
 @Component({
   selector: 'app-featured-promo-item-form',
-  imports: [CommonModule, ReactiveFormsModule, AutoCompleteModule, InputTextModule],
+  imports: [CommonModule, ReactiveFormsModule, AutoCompleteModule, InputTextModule, RowAuditBadge],
   templateUrl: './featured-promo-item-form.html',
   styleUrl: './featured-promo-item-form.scss',
 })

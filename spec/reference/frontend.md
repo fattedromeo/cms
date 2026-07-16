@@ -12,6 +12,14 @@ Read before touching `src/CMS.NG`. Scaffolding shapes live in `spec/code-gen.con
 - Services live in `core/services`, models in `core/models`, helpers in `core/utils`.
 - Sidebar nav lives in `app.ts` / `app.html`; add a child under the right group (some entries
   exist as `disabled: true` placeholders — replace with `route:` rather than adding a duplicate).
+  A group may set `requiresRole` (系統管理 → `Admin`); the shell only renders when signed in.
+- **Every new route needs `canActivate: [authGuard]`** (`[authGuard, adminGuard]` under 系統管理) —
+  guards are per-route here, so omitting one leaves the page reachable while signed out. The API
+  still refuses the data, so the symptom is a broken page, not a leak. See
+  `spec/auth/Authorization.md`.
+- **A spec that renders `App`, or any component whose service calls the API, needs an auth session.**
+  Use `signInAs([...])` from `@core/testing/auth-test-utils` **before** `TestBed.configureTestingModule`
+  — `AuthService` reads session storage once at construction, so seeding afterwards does nothing.
 - List pages: `p-table` (sortable/paginated) + filter `p-drawer`; persist filters/sort/page to
   `sessionStorage` under `{table}-list-filters | -sort | -page`.
 - Forms: Reactive Forms, `forkJoin` for parallel lookup loads; the immutable key is `disable()`d in
@@ -30,6 +38,26 @@ Read before touching `src/CMS.NG`. Scaffolding shapes live in `spec/code-gen.con
 
 **Confirm any v20 API against `node_modules/primeng/{module}/index.d.ts`** — v21 docs online will
 not match.
+
+### Inline table editing is hand-rolled — `pEditableColumn` is single-click only
+
+`pEditableColumn` hard-wires `host: { listeners: { "click": "onClick($event)" } }` and v20 exposes
+no double-click mode, so it **cannot** express "double-click to edit, single click does nothing".
+`course-list` therefore owns the trigger (an `editing` signal + `@if` + `(dblclick)` on the `<td>`)
+and uses the PrimeNG inputs only as the editors. Copy that, not `pEditableColumn`. Read-only columns
+are expressed as the *absence* of a handler — nothing to get wrong.
+
+For overlay editors (`p-select`, `p-datepicker`) blur alone is not a reliable "done" signal, because
+the panel can take focus off the trigger; wire their `(onChange)` / `(onSelect)` too and make the
+commit idempotent (guard on the editing cell + short-circuit when the value is unchanged) so it
+can't fire two PUTs.
+
+### ⚠️ `pAutoFocus`'s input is aliased, and the bare attribute only fails at build
+
+The directive is `[pAutoFocus]="true"` — `autofocus` is the *class* property, aliased to
+`pAutoFocus`. Writing the bare attribute `pAutoFocus` passes `''` into a `boolean` input:
+`ng test` **passes** (JIT coerces it) and `ng build` fails with TS2322. Same trap for any aliased
+boolean input. **A green `ng test` does not mean the template compiles — run the prod build.**
 
 The pin also means **a component you'd expect from PrimeNG may only exist in v21** — QRCode is the
 first case. Check `node_modules/primeng/` before reaching for a v21 feature, and prefer a
@@ -50,6 +78,22 @@ will never match a numeric `formControl` value and **silently shows blank**. See
 
 Exception: when the lookup's `pkid` genuinely *is* a string key (`app-roles` carries `RoleId`), bind
 it straight through — no conversion.
+
+## ⚠️ A `varchar` business key in a URL needs `encodeURIComponent` — check the data first
+
+These keys are **not** the tidy alphanumerics they look like: `Course.CourseId` holds spaces,
+*trailing* spaces, parens and CJK (15 of 1,080 dev rows); `AppUser.UserId` is an email. Raw
+interpolation just emits a broken URL — no exception is thrown, and **a test asserting only the
+pretty case still passes**, so assert an ugly key instead (`app-role.service.spec.ts` uses
+`'a/b role'`).
+
+Applies to every string-PK service (`app-role`, `app-user` → `getById` / `delete`) and to
+`course-detail`'s QR target, which encodes `CourseId` even though its own route key is the numeric
+`pkid`. A numeric `pkid` route needs no encoding — say so in a comment, as `course.service.ts`,
+`course-group.service.ts` and `featured-promo-item.service.ts` each do, so the omission reads as
+deliberate rather than forgotten.
+
+Scaffolding shape (route constraints, service signatures): `spec/code-gen.convention.md`.
 
 ## ⚠️ Dates
 
@@ -79,7 +123,7 @@ initialise and badges are accurate on first paint.
 
 ## Prod bundle is over its budget ceiling
 
-`initial` is **~511 kB** against a `maximumWarning` of 500 kB, so `ng build --configuration
+`initial` is **~571 kB** against a `maximumWarning` of 500 kB, so `ng build --configuration
 production` emits a budget **warning**. `maximumError` is 2 MB, so it still succeeds.
 
 This is **not** a per-feature regression: feature components are lazy chunks and `main` barely moves
@@ -87,6 +131,14 @@ This is **not** a per-feature regression: feature components are lazy chunks and
 initial bundle already references via `providePrimeNG` — Course first pulled in `p-select` /
 `p-datepicker` / `p-tabs` / `p-checkbox` / `p-textarea` (491→501 kB), AppUser then added `p-tag` /
 `p-multiselect` (501→511 kB). Each new PrimeNG primitive pushes it further.
+
+The RowAudit badge added ~1.5 kB (516→517): `p-dialog` joined the shared PrimeNG internals.
+The global error toast added ~54 kB (517→571): the shell (`app.ts`) now imports `ToastModule`
+eagerly — a global toast cannot be a lazy chunk, same reason as the auth wiring below.
+
+Auth added ~5 kB (511→516): `AuthService` / the interceptor / the guards are eagerly loaded from
+`app.config.ts` and `app.routes.ts`, so unlike a feature they cannot be a lazy chunk. The login page
+itself **is** lazy (~43 kB).
 
 **Raise `maximumWarning` in `angular.json`** rather than hunting a regression; measure against a
 stashed baseline before assuming otherwise.

@@ -32,7 +32,13 @@ export class App {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
-  protected readonly collapsed = signal(false);
+  // Regression: FINDING-001 — the sidebar rendered at its full 250px desktop width on mobile
+  // viewports with no responsive behavior, squeezing the data table into an unusable ~130px
+  // sliver. Default to the already-built collapsed (icon-rail) mode below 768px instead of
+  // building new mobile UI. Found by /design-review on 2026-07-17.
+  protected readonly collapsed = signal(
+    typeof window !== 'undefined' && window.innerWidth < 768,
+  );
 
   /** Drives whether the shell renders at all — the login page must appear on its own. */
   protected readonly isAuthenticated = this.auth.isAuthenticated;

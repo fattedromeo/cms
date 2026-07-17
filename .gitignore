@@ -44,3 +44,5 @@ Thumbs.db
 appsettings.*.local.json
 *.local.json
 .gstack/
+
+.claude/worktrees/

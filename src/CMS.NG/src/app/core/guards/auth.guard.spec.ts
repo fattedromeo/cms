@@ -7,7 +7,7 @@ import {
   UrlTree,
   provideRouter,
 } from '@angular/router';
-import { adminGuard, authGuard } from './auth.guard';
+import { adminGuard, authGuard, guestGuard } from './auth.guard';
 import { signInAs } from '@core/testing/auth-test-utils';
 
 describe('auth guards', () => {
@@ -81,6 +81,32 @@ describe('auth guards', () => {
       signInAs(['admin']);
 
       expect(run(adminGuard, '/app-users') instanceof UrlTree).toBeTrue();
+    });
+  });
+
+  describe('guestGuard', () => {
+    // Regression: an already-authenticated user hitting /login (stale bookmark, back button)
+    // used to render the login form stacked on top of the shell, since app.html shows the shell
+    // purely off isAuthenticated() while the router still resolved /login with no guard.
+    // Found by /qa on 2026-07-17
+    // Report: .gstack/qa-reports/qa-report-localhost-4200-2026-07-17.md
+    it('sends an already-authenticated user to /courses instead of rendering /login', () => {
+      signInAs(['User']);
+
+      const tree = run(guestGuard, '/login') as UrlTree;
+      expect(tree instanceof UrlTree).toBeTrue();
+      expect(tree.toString()).toContain('/courses');
+    });
+
+    it('allows a signed-out user to reach /login', () => {
+      expect(run(guestGuard, '/login')).toBeTrue();
+    });
+
+    it('redirects when the stored profile has no token', () => {
+      // Same half-written-entry edge case authGuard covers: must read as signed out.
+      sessionStorage.setItem('cms-auth', JSON.stringify({ userId: 'x', userName: 'y' }));
+
+      expect(run(guestGuard, '/login')).toBeTrue();
     });
   });
 });

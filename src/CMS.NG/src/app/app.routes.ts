@@ -1,12 +1,15 @@
 import { Routes } from '@angular/router';
 
-import { adminGuard, authGuard } from '@core/guards/auth.guard';
+import { adminGuard, authGuard, guestGuard } from '@core/guards/auth.guard';
 
 export const routes: Routes = [
   {
     // The only public route. Everything below requires a token; the admin group also requires the
-    // Admin role, mirroring [Authorize(Roles = "Admin")] on the matching API controllers.
+    // Admin role, mirroring [Authorize(Roles = "Admin")] on the matching API controllers. guestGuard
+    // sends an already-signed-in user (e.g. a stale bookmark or the back button) to /courses instead
+    // of rendering the login form stacked on top of the shell.
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () => import('@features/login/login').then((m) => m.Login),
   },
   // 課程管理 Course is visible to every signed-in user, so it is the home for all roles. It must NOT

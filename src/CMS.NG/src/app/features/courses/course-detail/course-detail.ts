@@ -1,21 +1,13 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { forkJoin } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
-import { toCanvas, toDataURL, QRCodeRenderersOptions } from 'qrcode';
+import { toCanvas } from 'qrcode';
 
-import { environment } from '@env/environment';
 import { CourseService } from '@core/services/course.service';
 import { Course } from '@core/models/course.model';
-import { LookupItem } from '@core/models/lookup-item.model';
+import { QR_OPTIONS, buildCourseQrUrl, renderQrDataUrl } from '@core/utils/qr.util';
 import { RowAuditBadge } from '@app/shared/row-audit-badge/row-audit-badge';
-
-const QR_OPTIONS: QRCodeRenderersOptions = {
-  errorCorrectionLevel: 'M',
-  margin: 2,
-  width: 220,
-};
 
 /** Height of the white band composited under the QR to hold the CourseId caption. */
 const CAPTION_BAND_PX = 34;
@@ -42,31 +34,22 @@ export class CourseDetail implements OnInit {
   /** PNG data URL of the bare QR shown on the page. The caption is HTML, not part of this image. */
   protected readonly qrDataUrl = signal<string>('');
 
-  /**
-   * Public-site URL the QR encodes.
-   *
-   * `CourseId` is NOT URL-safe: of 1,080 dev rows, 15 carry spaces, parentheses or CJK characters
-   * (e.g. `23aiNFA `, `DO180(NO)`, and pkid 1319's Chinese title), so the segment must be encoded.
-   * `pkid` is an int and needs none.
-   */
+  /** Public-site URL the QR encodes — URL-safety rules live in `qr.util.ts`. */
   protected readonly qrUrl = computed(() => {
     const c = this.course();
     if (!c) return '';
-    return `${environment.publicSiteUrl}/Course/Show/${c.pkid}/${encodeURIComponent(c.courseId)}`;
+    return buildCourseQrUrl(c.pkid, c.courseId);
   });
 
   ngOnInit(): void {
     const pkid = Number(this.route.snapshot.paramMap.get('id'));
 
-    forkJoin({
-      course: this.service.getById(pkid),
-      certifications: this.service.getCertificationOptions(),
-      jobCategories: this.service.getJobCategoryOptions(),
-    }).subscribe({
-      next: ({ course, certifications, jobCategories }) => {
+    // Label resolution lives in CourseService.getWithLabels — shared with the flyer page.
+    this.service.getWithLabels(pkid).subscribe({
+      next: ({ course, certificationLabels, jobCategoryLabels }) => {
         this.course.set(course);
-        this.certificationLabels.set(this.resolve(certifications, course.certificationPkids));
-        this.jobCategoryLabels.set(this.resolve(jobCategories, course.jobCategoryPkids));
+        this.certificationLabels.set(certificationLabels);
+        this.jobCategoryLabels.set(jobCategoryLabels);
         this.loading.set(false);
         void this.renderQr();
       },
@@ -77,13 +60,8 @@ export class CourseDetail implements OnInit {
     });
   }
 
-  /** LookupItem.pkid is a string; the course carries numeric pkids. */
-  private resolve(options: LookupItem[], pkids: number[]): string[] {
-    return options.filter((o) => pkids.includes(Number(o.pkid))).map((o) => o.label);
-  }
-
   private async renderQr(): Promise<void> {
-    this.qrDataUrl.set(await toDataURL(this.qrUrl(), QR_OPTIONS));
+    this.qrDataUrl.set(await renderQrDataUrl(this.qrUrl()));
   }
 
   /**
@@ -127,6 +105,12 @@ export class CourseDetail implements OnInit {
   edit(): void {
     const c = this.course();
     if (c) this.router.navigate(['/courses', c.pkid, 'edit']);
+  }
+
+  /** Opens the flyer print-first: `?print=1` auto-fires the dialog once data + QR are ready. */
+  flyer(): void {
+    const c = this.course();
+    if (c) this.router.navigate(['/courses', c.pkid, 'flyer'], { queryParams: { print: 1 } });
   }
 
   back(): void {

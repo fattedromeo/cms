@@ -1,0 +1,75 @@
+<div class="flyer-page">
+  <!-- Preview chrome: everything with .no-print vanishes on paper (global print CSS).
+       The RowAudit badge lives HERE, around the sheet, never on it — rule 20 satisfied
+       while the sheet stays WYSIWYG (final-gate decision T2). -->
+  <div class="flyer-toolbar no-print">
+    <div class="flyer-toolbar__left">
+      <p-button
+        label="返回課程"
+        icon="pi pi-arrow-left"
+        severity="secondary"
+        [outlined]="true"
+        (onClick)="back()"
+      />
+      @if (course(); as c) {
+        <app-row-audit-badge tableName="Course" [pkid]="c.pkid" />
+      }
+    </div>
+    <p-button label="列印" icon="pi pi-print" [disabled]="!canPrint()" (onClick)="print()" />
+  </div>
+
+  @if (!hintDismissed()) {
+    <!-- Chrome's default header prints the app URL across the collateral; CSS cannot disable
+         it, so the fix is UX (CourseFlyer.md). -->
+    <div class="flyer-hint no-print">
+      <span>列印時請取消「頁首和頁尾」並選擇 A4（背景圖形可關閉）</span>
+      <button type="button" class="flyer-hint__close" aria-label="關閉提示" (click)="hintDismissed.set(true)">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="card status-card no-print">載入中…</div>
+  } @else if (notFound()) {
+    <div class="card status-card no-print">查無此課程。</div>
+  } @else if (course(); as c) {
+    @if (!isLive()) {
+      <!-- Always visible on screen for a non-live course; confirming only unblocks printing. -->
+      <div class="flyer-banner no-print">
+        <i class="pi pi-exclamation-triangle"></i>
+        <span>
+          此課程目前非公開上架狀態或不在上架期間 — 傳單上的 QR Code 可能無法連到課程網頁。
+        </span>
+        @if (!printConfirmed()) {
+          <p-button label="確認列印" severity="warn" size="small" (onClick)="confirmPrint()" />
+          @if (printPending()) {
+            <!-- Only auto-print (?print=1) can dead-end here — a manual visit has no hold to cancel. -->
+            <p-button label="取消列印" severity="secondary" size="small" (onClick)="cancelPendingPrint()" />
+          }
+        }
+      </div>
+    }
+
+    @if (qrError() && printPending()) {
+      <div class="flyer-banner flyer-banner--error no-print">
+        <span>QR Code 產生失敗 — 要在沒有 QR Code 的情況下列印嗎？</span>
+        <p-button label="仍要列印" size="small" [disabled]="!canPrint()" (onClick)="printWithoutQr()" />
+        <p-button label="取消列印" severity="secondary" size="small" (onClick)="cancelPendingPrint()" />
+      </div>
+    }
+
+    @if (printPending() && !qrError()) {
+      <div class="flyer-hold no-print">準備列印…</div>
+    }
+
+    <app-course-flyer-sheet
+      [course]="c"
+      [certificationLabels]="certificationLabels()"
+      [qrDataUrl]="qrDataUrl()"
+      [qrError]="qrError()"
+      (qrImageLoaded)="onQrImageLoaded()"
+      (qrImageError)="onQrImageError()"
+    />
+  }
+</div>

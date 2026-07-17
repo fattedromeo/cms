@@ -45,7 +45,7 @@ public class CoursesControllerTests
         CanRepeat = true,
         Partner = new CoursePartnerRef { Pkid = 2, Name = "Oracle" },
         CourseGroup = new CourseGroupRef { Pkid = 18, Description = "Oracle SQL/DB系列課程" },
-        PublishStatus = new CoursePublishStatusRef { Pkid = 3, Description = "已下架" },
+        PublishStatus = new CoursePublishStatusRef { Pkid = 3, Description = "已下架", IsPublished = false },
         CertificationPkids = [5],
         JobCategoryPkids = [22]
     };
@@ -175,6 +175,7 @@ public class CoursesControllerTests
         Assert.Equal("Oracle", course.Partner!.Name);
         Assert.Equal("Oracle SQL/DB系列課程", course.CourseGroup!.Description);
         Assert.Equal("已下架", course.PublishStatus!.Description);
+        Assert.False(course.PublishStatus.IsPublished);   // flyer gate reads this bit (CourseFlyer.md)
         Assert.Equal([5], course.CertificationPkids);
         Assert.Equal([(short)22], course.JobCategoryPkids);
         _repo.VerifyAll();

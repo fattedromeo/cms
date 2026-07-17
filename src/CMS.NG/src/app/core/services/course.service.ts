@@ -1,9 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, forkJoin, map } from 'rxjs';
 import { environment } from '@env/environment';
 import { Course, CourseQuery, CourseRequest } from '@core/models/course.model';
 import { LookupItem } from '@core/models/lookup-item.model';
+
+/** A course plus its N-N pkid lists resolved to display labels (detail page, flyer). */
+export interface CourseWithLabels {
+  course: Course;
+  certificationLabels: string[];
+  jobCategoryLabels: string[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class CourseService {
@@ -22,6 +29,25 @@ export class CourseService {
   // pkid is numeric — no encodeURIComponent needed (unlike the string-PK AppRole service).
   getById(pkid: number): Observable<Course> {
     return this.http.get<Course>(`${this.baseUrl}/${pkid}`);
+  }
+
+  /**
+   * Course + resolved N-N labels in one call — shared by the detail page and the flyer so the
+   * forkJoin/resolve logic isn't duplicated. LookupItem.pkid is a string; the course carries
+   * numeric pkids (frontend rule 16) — hence the Number() bridge.
+   */
+  getWithLabels(pkid: number): Observable<CourseWithLabels> {
+    return forkJoin({
+      course: this.getById(pkid),
+      certifications: this.getCertificationOptions(),
+      jobCategories: this.getJobCategoryOptions(),
+    }).pipe(
+      map(({ course, certifications, jobCategories }) => ({
+        course,
+        certificationLabels: resolveLabels(certifications, course.certificationPkids),
+        jobCategoryLabels: resolveLabels(jobCategories, course.jobCategoryPkids),
+      })),
+    );
   }
 
   create(request: CourseRequest): Observable<Course> {
@@ -62,4 +88,8 @@ export class CourseService {
   getJobCategoryOptions(): Observable<LookupItem[]> {
     return this.http.get<LookupItem[]>(`${this.lookupUrl}/job-categories`);
   }
+}
+
+function resolveLabels(options: LookupItem[], pkids: number[]): string[] {
+  return options.filter((o) => pkids.includes(Number(o.pkid))).map((o) => o.label);
 }

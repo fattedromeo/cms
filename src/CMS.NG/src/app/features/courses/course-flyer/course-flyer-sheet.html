@@ -1,0 +1,55 @@
+<article class="sheet">
+  <header class="sheet__brand">
+    <span class="sheet__brand-mark">{{ brand.textMark }}</span>
+    <span class="sheet__brand-site">{{ brand.siteLabel }}</span>
+  </header>
+
+  <div class="sheet__title-block">
+    <h1 class="sheet__title">{{ course().title }}</h1>
+    @if (course().officialTitle) {
+      <p class="sheet__official">{{ course().officialTitle }}</p>
+    }
+  </div>
+
+  <ul class="sheet__facts">
+    @for (f of facts(); track f.label) {
+      <li class="sheet__fact" [class.sheet__fact--dominant]="f.dominant">
+        <span class="sheet__fact-label">{{ f.label }}</span>
+        <span class="sheet__fact-value">{{ f.value }}</span>
+      </li>
+    }
+  </ul>
+
+  @for (s of sections(); track s.title) {
+    <section class="sheet__section" [class.sheet__section--long]="s.long">
+      <h2 class="sheet__section-title">{{ s.title }}</h2>
+      <!-- pre-wrap (matches the detail page): keeps newlines AND full-width-space indentation
+           in CJK outlines. Plain interpolation only — innerHTML would bypass XSS escaping. -->
+      <p class="sheet__section-text">{{ s.text }}</p>
+    </section>
+  }
+
+  <footer class="sheet__footer">
+    <div class="sheet__contact">
+      <p>{{ brand.address }}</p>
+      <p>電話 {{ brand.phone }} · {{ brand.email }}</p>
+      <p class="sheet__meta">{{ generatedDate }} 印製 · 價格與開課資訊以官網公告為準</p>
+    </div>
+    <figure class="sheet__qr">
+      @if (qrDataUrl()) {
+        <img
+          class="sheet__qr-image"
+          [src]="qrDataUrl()"
+          [alt]="'課程 ' + course().courseId + ' QR Code'"
+          (load)="qrImageLoaded.emit()"
+          (error)="qrImageError.emit()"
+        />
+      } @else if (qrError()) {
+        <!-- Loud, never blank: a missing QR must be visible on the preview (CourseFlyer.md). -->
+        <div class="sheet__qr-error">QR Code 產生失敗</div>
+      }
+      <figcaption class="sheet__qr-caption">{{ course().courseId }}</figcaption>
+      <span class="sheet__qr-hint">掃描查看課程網頁</span>
+    </figure>
+  </footer>
+</article>

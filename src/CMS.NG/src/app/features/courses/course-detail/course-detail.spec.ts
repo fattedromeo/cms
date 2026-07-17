@@ -36,20 +36,24 @@ const sample: Course = {
   canRepeat: true,
   partner: { pkid: 2, name: 'Oracle' },
   courseGroup: { pkid: 18, description: 'Oracle SQL/DB系列課程' },
-  publishStatus: { pkid: 3, description: '已下架' },
+  publishStatus: { pkid: 3, description: '已下架', isPublished: false },
   certificationPkids: [5],
   jobCategoryPkids: [22],
 };
 
 function setup(course: Course | null = sample, fail = false) {
-  const service = jasmine.createSpyObj<CourseService>('CourseService', [
-    'getById',
-    'getCertificationOptions',
-    'getJobCategoryOptions',
-  ]);
-  service.getById.and.returnValue(fail ? throwError(() => new Error('404')) : of(course!));
-  service.getCertificationOptions.and.returnValue(of([{ pkid: '5', label: 'Oracle - OCP' }]));
-  service.getJobCategoryOptions.and.returnValue(of([{ pkid: '22', label: '資料庫管理' }]));
+  // The component consumes getWithLabels (course + resolved N-N labels in one call); the
+  // forkJoin/resolve internals are covered by course.service.spec.ts, not re-mocked here.
+  const service = jasmine.createSpyObj<CourseService>('CourseService', ['getWithLabels']);
+  service.getWithLabels.and.returnValue(
+    fail
+      ? throwError(() => new Error('404'))
+      : of({
+          course: course!,
+          certificationLabels: ['Oracle - OCP'],
+          jobCategoryLabels: ['資料庫管理'],
+        }),
+  );
 
   // The template uses routerLink for the FK links, and RouterLink subscribes to router.events —
   // a jasmine Router spy has no events observable, so provide the real router and spy on navigate.
@@ -121,7 +125,7 @@ describe('CourseDetail', () => {
 
   it('loads the course by numeric id', () => {
     const { component, service } = setup();
-    expect(service.getById).toHaveBeenCalledWith(1);
+    expect(service.getWithLabels).toHaveBeenCalledWith(1);
     expect(component['course']()).toEqual(sample);
   });
 
@@ -160,6 +164,18 @@ describe('CourseDetail', () => {
     const { component, navigate } = setup();
     component['back']();
     expect(navigate).toHaveBeenCalledWith(['/courses']);
+  });
+
+  it('flyer() navigates to the flyer route with ?print=1 armed', () => {
+    const { component, navigate } = setup();
+    component['flyer']();
+    expect(navigate).toHaveBeenCalledWith(['/courses', 1, 'flyer'], { queryParams: { print: 1 } });
+  });
+
+  it('flyer() does nothing when there is no course loaded', () => {
+    const { component, navigate } = setup(null, true);
+    component['flyer']();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   describe('QR code', () => {

@@ -142,3 +142,16 @@ itself **is** lazy (~43 kB).
 
 **Raise `maximumWarning` in `angular.json`** rather than hunting a regression; measure against a
 stashed baseline before assuming otherwise.
+
+## ⚠️ Print CSS: two hostile defaults
+
+- **The app shell clips print.** `:host`/`.layout`/`.content` use `height: 100vh` + overflow, so
+  anything printed from inside the shell truncates to ~one viewport. Any print feature needs a
+  scoped `@media print` reset of the full `html` → `.content` height/overflow chain in global
+  `styles.scss` — component styles can't reach body-level classes.
+- **Chrome's print defaults fight branded output**: background graphics OFF by default (use
+  borders, not background colors, + `print-color-adjust: exact`), the URL header/footer ON (a UX
+  hint, not fixable from CSS), paper size overridable (design for A4, tolerate Letter). Verify
+  against these settings, never the screen preview.
+
+Worked example: `spec/course/CourseFlyer.md`, `app.scss`, `styles.scss`.

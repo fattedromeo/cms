@@ -6,6 +6,10 @@
 **Reviewers:** structured critical pass + 6 specialists (testing, maintainability, security, performance, api-contract, design) + Claude adversarial + red-team gap pass
 **Headline:** No P1 / critical / security findings. Feature is sound; remaining items are P2 robustness + P3 polish/doc drift.
 
+**Update 2026-07-17:** P2.1–P2.7 fixed (see "P2 Resolution" below). `ng test` 529/529 green
+(incl. new/changed specs), `ng build --configuration production` clean. P3 items untouched —
+still open, see their own dispositions below.
+
 ---
 
 ## Finding Summary
@@ -13,13 +17,13 @@
 | ID | Sev | Conf | Area | Location | Finding | Disposition |
 |----|-----|------|------|----------|---------|-------------|
 | FP-1 | — | 10 | data | `environment(.prod).ts` | Footer address flagged as drifted — **verified byte-exact** against live dev DB `TrainingCenter.IsDefault=1` (`台北市復興北路99號14 樓`, space included). | **False positive — no action.** Spec prose quote (`CourseFlyer.md:115`) dropped the space; code is correct. |
-| P2.1 | P2 | 8 | correctness | `course-flyer-sheet.html:40`, `course-flyer-page.ts:101` | QR `<img>` has no `(error)` handler; only `toDataURL` rejection is wired. Img decode failure → `qrPainted` never set → `?print=1` stalls on 準備列印… forever (F5 re-arms). Spec's self-declared worst failure mode. | Fix now |
-| P2.2 | P2 | 7 | lifecycle | `course-flyer-page.ts:76` | `getWithLabels` subscription not tied to `DestroyRef`. Slow load + navigate away → `next()` runs post-destroy and rewrites `document.title` after `ngOnDestroy` restored it → wrong tab title for the session. | Fix now |
-| P2.3 | P2 | 7 | lifecycle | `course-flyer-page.ts:155,159,168` | `queuePrint` rAF/setTimeout chain + `firePrint` not destroy-guarded → `window.print()` can fire on another route (chrome visible, forced A4); `stripPrintParam` navigates via stale `ActivatedRoute` with `replaceUrl`. | Fix now |
-| P2.4 | P2 | 7 | UX dead-end | `course-flyer-page.ts:142`, `course-flyer-page.html:37` | Non-live course + `?print=1`, user declines → `printPending` never clears: 準備列印… shows forever, `?print=1` stays in URL, F5 re-arms. Cancel affordance only exists in the QR-error banner, not the publish-warning banner. | Fix now |
-| P2.5 | P2 | 7 | correctness | `course-flyer-page.ts:121,159`, `:65` | Manual `print()` calls `window.print()` synchronously in change detection (violates the file's own comment) and `canPrint` gates on `qrDataUrl` set, not `qrPainted` → fast 列印 click can print before QR paints. No double-fire guard in `firePrint` (confirm-then-click → two dialogs). | Fix now |
-| P2.6 | P2 | 7 | test gap | `course-flyer-page.spec.ts`, `course.service.spec.ts`, `course-detail.spec.ts` | Untested paths: `printWithoutQr()` both branches; `renderQr` catch (spec pokes signal instead of exercising the throw); `CourseDetail.flyer()` nav; load-error + `?print=1` combo; `getWithLabels` lookup-endpoint-failure branch. | Fix now (with the fixes above) |
-| P2.7 | P2 | 6 | test flake | `course-flyer-page.spec.ts:13` | `today` captured at module load, `isLive()` re-reads `new Date()` at assert time → `ScheduleOn/Off = today` boundary tests flake across local midnight. | Fix now — `jasmine.clock().mockDate` |
+| P2.1 | P2 | 8 | correctness | `course-flyer-sheet.html:40`, `course-flyer-page.ts:101` | QR `<img>` has no `(error)` handler; only `toDataURL` rejection is wired. Img decode failure → `qrPainted` never set → `?print=1` stalls on 準備列印… forever (F5 re-arms). Spec's self-declared worst failure mode. | **Fixed** |
+| P2.2 | P2 | 7 | lifecycle | `course-flyer-page.ts:76` | `getWithLabels` subscription not tied to `DestroyRef`. Slow load + navigate away → `next()` runs post-destroy and rewrites `document.title` after `ngOnDestroy` restored it → wrong tab title for the session. | **Fixed** |
+| P2.3 | P2 | 7 | lifecycle | `course-flyer-page.ts:155,159,168` | `queuePrint` rAF/setTimeout chain + `firePrint` not destroy-guarded → `window.print()` can fire on another route (chrome visible, forced A4); `stripPrintParam` navigates via stale `ActivatedRoute` with `replaceUrl`. | **Fixed** |
+| P2.4 | P2 | 7 | UX dead-end | `course-flyer-page.ts:142`, `course-flyer-page.html:37` | Non-live course + `?print=1`, user declines → `printPending` never clears: 準備列印… shows forever, `?print=1` stays in URL, F5 re-arms. Cancel affordance only exists in the QR-error banner, not the publish-warning banner. | **Fixed** |
+| P2.5 | P2 | 7 | correctness | `course-flyer-page.ts:121,159`, `:65` | Manual `print()` calls `window.print()` synchronously in change detection (violates the file's own comment) and `canPrint` gates on `qrDataUrl` set, not `qrPainted` → fast 列印 click can print before QR paints. No double-fire guard in `firePrint` (confirm-then-click → two dialogs). | **Fixed** |
+| P2.6 | P2 | 7 | test gap | `course-flyer-page.spec.ts`, `course.service.spec.ts`, `course-detail.spec.ts` | Untested paths: `printWithoutQr()` both branches; `renderQr` catch (spec pokes signal instead of exercising the throw); `CourseDetail.flyer()` nav; load-error + `?print=1` combo; `getWithLabels` lookup-endpoint-failure branch. | **Fixed** |
+| P2.7 | P2 | 6 | test flake | `course-flyer-page.spec.ts:13` | `today` captured at module load, `isLive()` re-reads `new Date()` at assert time → `ScheduleOn/Off = today` boundary tests flake across local midnight. | **Fixed** — `jasmine.clock().mockDate` |
 | P3.1 | P3 | 8 | visual | `course-flyer-page.html:33`, `.scss` | `.status-card` used but not defined in `course-flyer-page.scss` (component-scoped elsewhere) → 載入中…/查無此課程 render as bare `.card` with no padding, off-pattern. | Cheap fix or promote to `styles.scss` |
 | P3.2 | P3 | 6 | layout | `course-flyer-page.scss:7` | `.flyer-page { margin: -1rem }` claims to cancel `.content` padding, but `.content` (`app.scss:141`) has none → 2rem overflow, likely horizontal scrollbar + 1rem under sticky topbar. | Verify on screen; drop negative margin |
 | P3.3 | P3 | 6 | print | `course-flyer-sheet.scss:186` | After 仍要列印, the dashed-red `.sheet__qr-error` box + scan hint print on the paper flyer (no `@media print` suppression). | Cheap fix — hide in print |
@@ -33,7 +37,7 @@
 
 **Accepted as-designed (noted, no action):** global `@page A4` affects all routes' Ctrl+P (plan-accepted, can't be scoped); `isLive()`/`generatedDate` frozen at load across midnight (spec calls the gate best-effort); lookup-failure surfaces as 查無此課程 (pre-existing detail-page pattern); deploy API before/with frontend (old API → `isPublished` undefined → fail-safe warning banner only).
 
-**Counts:** 0 critical · 5 robustness (P2) + 2 test (P2) · 10 polish/doc (P3) · 1 false positive · 4 accepted-by-design.
+**Counts:** 0 critical · 5 robustness (P2) + 2 test (P2), all **fixed** · 10 polish/doc (P3, still open) · 1 false positive · 4 accepted-by-design.
 
 ---
 
@@ -73,14 +77,68 @@ Gate holds at `tryAutoPrint` (`:145`) with no state change → `printPending` st
 
 ---
 
+## P2 Resolution (2026-07-17)
+
+All seven applied as designed above, no scope changes:
+
+- **P2.1** — `CourseFlyerSheet` gained `qrImageError = output<void>()` wired to `(error)` on the
+  `<img>` (`course-flyer-sheet.ts`/`.html`). `CourseFlyerPage.onQrImageError()` clears `qrDataUrl`
+  and sets `qrError` — routes into the same decision banner as a `toDataURL` rejection.
+- **P2.2** — `getWithLabels(pkid).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(...)`; a
+  slow response after destroy no longer reaches `next()`, so `document.title` can't be rewritten
+  post-`ngOnDestroy`.
+- **P2.3** — added a `destroyed` flag set at the top of `ngOnDestroy`; `firePrint()` bails when
+  `destroyed` (or already `printFired`, see P2.5) before touching `window.print()` or
+  `stripPrintParam()`. A deferred `queuePrint` callback landing after navigation is now a no-op.
+- **P2.4** — the publish-warning banner now renders 取消列印 (reusing `cancelPendingPrint()`)
+  alongside 確認列印 whenever `printPending()` is true, so declining no longer strands
+  準備列印… with `?print=1` stuck in the URL.
+- **P2.5** — `qrPainted` is now a signal (was a private boolean) so `ready`/`canPrint` react to it
+  directly instead of to `qrDataUrl` being merely *set*; `print()` and `printWithoutQr()` both
+  route through `queuePrint()` instead of calling `firePrint()` directly; `firePrint()` gained a
+  one-shot `printFired` guard shared with the P2.3 fix, so a manual click racing the auto-print
+  path can't open a second dialog.
+- **P2.6** — added coverage for all five listed gaps (`printWithoutQr()` both branches; `renderQr`
+  catch exercised via a real `toDataURL` rejection — a 3,000-char `courseId` that exceeds QR byte
+  capacity — rather than a poked signal; `CourseDetail.flyer()` nav, `course-detail.spec.ts`; a
+  load-error + `?print=1` combo; `getWithLabels` lookup-endpoint-failure, `course.service.spec.ts`)
+  plus regression specs for P2.1–P2.5 themselves (`qrImageError` wiring in both the sheet and page
+  specs, the P2.2 post-destroy race via a controllable `Subject`, the P2.3 destroy-guard via a
+  captured-not-fired `queuePrint` callback, the P2.4 取消列印 click, the P2.5 `canPrint`/`qrPainted`
+  gating and the `printFired` double-dialog guard). One pre-existing test
+  (`disables 列印 for a non-live course until confirmed`) had to be updated in place — it poked
+  `qrDataUrl` directly, which no longer satisfies `canPrint` after the P2.5 `qrPainted` gating —
+  now drives it through `onQrImageLoaded()` like production does.
+- **P2.7** — the two boundary specs moved into their own `describe`, wrapped with
+  `jasmine.clock().install()` / `mockDate(frozenNow)` in `beforeEach` and `uninstall()` in
+  `afterEach`; both the test's `ScheduleOn`/`ScheduleOff` value and the component's internal
+  `new Date()` reads now resolve against the same frozen instant. The module-level `today` const
+  (the flake source) was removed since nothing else used it.
+
+**Files touched:** `course-flyer-page.ts`, `course-flyer-page.html`, `course-flyer-sheet.ts`,
+`course-flyer-sheet.html`, `course-flyer-page.spec.ts`, `course-flyer-sheet.spec.ts`,
+`course-detail.spec.ts`, `course.service.spec.ts`.
+
+---
+
 ## Recommended fix scope
 
-Apply **P2.1–P2.7** now (real correctness/robustness gaps, all small and local) plus cheap doc/polish **P3.5, P3.6, P3.1, P3.3**. Fold remaining P3 into `TODOS.md`. Run the **P3.8** `stripHtml` dev-data check before deciding fix vs documented-accept.
+~~Apply **P2.1–P2.7** now~~ — **done, see "P2 Resolution" above.** Remaining: cheap doc/polish
+**P3.5, P3.6, P3.1, P3.3**. Fold remaining P3 into `TODOS.md`. Run the **P3.8** `stripHtml` dev-data
+check before deciding fix vs documented-accept.
 
 ## Verification
 
-- `cd src/CMS.NG && npx ng test --watch=false --browsers=ChromeHeadless` — green incl. new branch + clock-frozen specs.
-- `npx ng build --configuration production` — clean (green test ≠ compiles).
-- `cd src && dotnet test CMS.sln` — `IsPublished` projection assertion green.
-- Manual (spec's manual-verify list): print verification rows (pkid 1319 CJK, pkid 2103 trailing space, `DO180(NO)`, longest-Outline) to PDF with headers/footers AND background graphics unchecked; confirm page 2 exists, QR scans ≥25mm, no admin chrome, Letter override doesn't clip.
+- `cd src/CMS.NG && npx ng test --watch=false --browsers=ChromeHeadless` — **529/529 green**,
+  incl. new P2.1–P2.7 specs and the clock-frozen boundary specs.
+- `npx ng build --configuration production` — **clean** (green test ≠ compiles).
+- `cd src && dotnet test CMS.sln` — not re-run; P2.1–P2.7 fixes are frontend-only, no backend
+  files touched. Still owed before landing per the original review (`IsPublished` projection
+  assertion).
+- Manual (spec's manual-verify list, **not yet performed**): print verification rows (pkid 1319
+  CJK, pkid 2103 trailing space, `DO180(NO)`, longest-Outline) to PDF with headers/footers AND
+  background graphics unchecked; confirm page 2 exists, QR scans ≥25mm, no admin chrome, Letter
+  override doesn't clip. Also re-drive the state machine by hand: non-live + `?print=1` → warning
+  + 取消列印 clears the hold; force a real QR `<img>` decode error → decision banner, not a stall;
+  navigate away mid-load → tab title intact.
 - Re-drive the state machine: non-live + `?print=1` → warning + 取消列印 clears the hold; force a QR error → decision banner, not a stall; navigate away mid-load → tab title intact.

@@ -39,3 +39,17 @@ export const adminGuard: CanActivateFn = (_route, state) => {
 function loginRedirect(router: Router, returnUrl: string) {
   return router.createUrlTree(['/login'], { queryParams: { returnUrl } });
 }
+
+/**
+ * Blocks the /login route itself once a token is present, so a stale bookmark or the browser's
+ * back button cannot land an already-authenticated user on the raw login form — the shell (app.html)
+ * renders the moment isAuthenticated() is true regardless of which route is active, so without this
+ * guard the login form would render stacked on top of the sidebar/topbar instead of either replacing
+ * it or staying hidden.
+ */
+export const guestGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  return auth.isAuthenticated() ? router.createUrlTree(['/courses']) : true;
+};

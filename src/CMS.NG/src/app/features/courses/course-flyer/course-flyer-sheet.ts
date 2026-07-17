@@ -41,6 +41,8 @@ export class CourseFlyerSheet {
   readonly qrError = input(false);
   /** Fires when the QR <img> has decoded — the page uses it to time auto-print. */
   readonly qrImageLoaded = output<void>();
+  /** Fires when the QR <img> fails to decode a set src — the page turns this into a loud error. */
+  readonly qrImageError = output<void>();
 
   protected readonly brand = environment.flyer;
 

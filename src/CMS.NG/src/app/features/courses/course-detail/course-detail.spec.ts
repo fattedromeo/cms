@@ -166,6 +166,18 @@ describe('CourseDetail', () => {
     expect(navigate).toHaveBeenCalledWith(['/courses']);
   });
 
+  it('flyer() navigates to the flyer route with ?print=1 armed', () => {
+    const { component, navigate } = setup();
+    component['flyer']();
+    expect(navigate).toHaveBeenCalledWith(['/courses', 1, 'flyer'], { queryParams: { print: 1 } });
+  });
+
+  it('flyer() does nothing when there is no course loaded', () => {
+    const { component, navigate } = setup(null, true);
+    component['flyer']();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   describe('QR code', () => {
     it('encodes the public course URL built from pkid and courseId', () => {
       const { component } = setup();

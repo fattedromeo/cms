@@ -33,7 +33,9 @@ public sealed class PartnerRepository : IPartnerRepository
     public async Task<IEnumerable<Partner>> GetAllAsync(CancellationToken ct = default)
     {
         using var conn = await _factory.CreateOpenConnectionAsync(ct);
-        var sql = $@"SELECT {SelectColumns} FROM Partner p ORDER BY p.DisplayOrder ASC;";
+        // DisplayOrder has few distinct values (heavy ties) — p.pkid breaks ties deterministically
+        // instead of relying on incidental heap/index order, which is not guaranteed stable.
+        var sql = $@"SELECT {SelectColumns} FROM Partner p ORDER BY p.DisplayOrder ASC, p.pkid ASC;";
         return await conn.QueryAsync<Partner>(new CommandDefinition(sql, cancellationToken: ct));
     }
 
@@ -52,7 +54,7 @@ public sealed class PartnerRepository : IPartnerRepository
         }
 
         var whereSql = where.Count > 0 ? $"WHERE {string.Join(" AND ", where)}" : string.Empty;
-        var sql = $@"SELECT {SelectColumns} FROM Partner p {whereSql} ORDER BY p.DisplayOrder ASC;";
+        var sql = $@"SELECT {SelectColumns} FROM Partner p {whereSql} ORDER BY p.DisplayOrder ASC, p.pkid ASC;";
         return await conn.QueryAsync<Partner>(new CommandDefinition(sql, p, cancellationToken: ct));
     }
 

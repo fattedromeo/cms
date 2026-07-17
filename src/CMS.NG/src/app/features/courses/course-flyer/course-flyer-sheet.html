@@ -42,6 +42,7 @@
           [src]="qrDataUrl()"
           [alt]="'課程 ' + course().courseId + ' QR Code'"
           (load)="qrImageLoaded.emit()"
+          (error)="qrImageError.emit()"
         />
       } @else if (qrError()) {
         <!-- Loud, never blank: a missing QR must be visible on the preview (CourseFlyer.md). -->

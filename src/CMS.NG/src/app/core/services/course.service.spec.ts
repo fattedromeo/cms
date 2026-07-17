@@ -201,5 +201,21 @@ describe('CourseService', () => {
 
       expect(error).toBeDefined();
     });
+
+    it('propagates a lookup-endpoint failure too — not just a course-load failure', () => {
+      // The course row itself loads fine; a lookup GET failing must still fail the whole join
+      // (the caller has no way to resolve labels for a course it never gets), same as a 404
+      // on the course itself.
+      let error: unknown;
+      service.getWithLabels(1).subscribe({ error: (e) => (error = e) });
+
+      httpMock.expectOne(`${base}/1`).flush(sample);
+      httpMock
+        .expectOne(`${lookups}/certifications`)
+        .flush('boom', { status: 500, statusText: 'Server Error' });
+      httpMock.expectOne(`${lookups}/job-categories`);
+
+      expect(error).toBeDefined();
+    });
   });
 });

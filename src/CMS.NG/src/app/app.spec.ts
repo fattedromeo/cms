@@ -32,6 +32,13 @@ describe('App (shell)', () => {
     });
 
     const fixture = TestBed.createComponent(App);
+    // Karma's headless browser window can be narrower than 768px, which would default
+    // `collapsed` to true (FINDING-001's mobile behavior) and hide every nav label/link these
+    // tests assert on. Pin an expanded baseline here — the responsive-default logic itself has
+    // its own dedicated tests below.
+    (fixture.componentInstance as unknown as { collapsed: { set(v: boolean): void } }).collapsed.set(
+      false,
+    );
     fixture.detectChanges();
     return fixture;
   }
@@ -160,5 +167,46 @@ describe('App (shell)', () => {
     expect(app.collapsed()).toBeFalse();
     app.toggleCollapsed();
     expect(app.collapsed()).toBeTrue();
+  });
+
+  // Regression: FINDING-001 — the sidebar rendered at its full 250px desktop width on mobile
+  // viewports with no responsive behavior, squeezing the data table into an unusable ~130px
+  // sliver. `collapsed` now defaults from window.innerWidth instead of a hardcoded false.
+  // Found by /design-review on 2026-07-17.
+  // Report: .gstack/design-reports/design-audit-localhost-4200-2026-07-17.md
+  describe('responsive default', () => {
+    function setupAtWidth(width: number) {
+      spyOnProperty(window, 'innerWidth').and.returnValue(width);
+      sessionStorage.clear();
+      signInAs(['Admin']);
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [App],
+        providers: [
+          provideRouter([]),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+          provideNoopAnimations(),
+          MessageService,
+        ],
+      });
+      return TestBed.createComponent(App);
+    }
+
+    it('defaults to collapsed below the 768px breakpoint', () => {
+      const fixture = setupAtWidth(375);
+      fixture.detectChanges();
+      const app = fixture.componentInstance as unknown as { collapsed: () => boolean };
+
+      expect(app.collapsed()).toBeTrue();
+    });
+
+    it('defaults to expanded at or above the 768px breakpoint', () => {
+      const fixture = setupAtWidth(1280);
+      fixture.detectChanges();
+      const app = fixture.componentInstance as unknown as { collapsed: () => boolean };
+
+      expect(app.collapsed()).toBeFalse();
+    });
   });
 });

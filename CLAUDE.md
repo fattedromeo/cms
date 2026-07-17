@@ -29,7 +29,8 @@ The detail lives there, deliberately not here. Don't work from memory of them.
 | `spec/reference/cross-cutting.md` | any repository write or detail/form page (RowAudit + error handling) |
 | `spec/code-gen.convention.md` | scaffolding shapes |
 
-Implemented (one entry each in `features.md`): AppRole, AppUser, Partner, PublishStatus, Course, CourseGroup, CourseFlyer (print-to-PDF), FeaturedPromoItem, Login API, JWT authorization, My Profile, Row Audit, global exception handling.
+Implemented features are indexed in `features.md` (one entry each) — read the entry before
+modifying a feature, or the closest structural match before building a new one.
 
 ## Non-negotiables — triggers only
 

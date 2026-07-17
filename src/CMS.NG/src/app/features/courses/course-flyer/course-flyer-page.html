@@ -43,6 +43,10 @@
         </span>
         @if (!printConfirmed()) {
           <p-button label="確認列印" severity="warn" size="small" (onClick)="confirmPrint()" />
+          @if (printPending()) {
+            <!-- Only auto-print (?print=1) can dead-end here — a manual visit has no hold to cancel. -->
+            <p-button label="取消列印" severity="secondary" size="small" (onClick)="cancelPendingPrint()" />
+          }
         }
       </div>
     }
@@ -65,6 +69,7 @@
       [qrDataUrl]="qrDataUrl()"
       [qrError]="qrError()"
       (qrImageLoaded)="onQrImageLoaded()"
+      (qrImageError)="onQrImageError()"
     />
   }
 </div>

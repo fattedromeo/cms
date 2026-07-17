@@ -1,4 +1,5 @@
-import { Component, OnDestroy, OnInit, Renderer2, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnDestroy, OnInit, Renderer2, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DOCUMENT } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -27,6 +28,7 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly course = signal<Course | null>(null);
   protected readonly certificationLabels = signal<string[]>([]);
@@ -43,7 +45,10 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
 
   private originalTitle = '';
   private printScheduled = false;
-  private qrPainted = false;
+  private printFired = false;
+  private destroyed = false;
+  /** True once the sheet's QR <img> has decoded (not merely once qrDataUrl is set). */
+  protected readonly qrPainted = signal(false);
 
   /**
    * The publish gate. Fail-safe: only `isPublished === true` counts (the flag is absent on
@@ -58,8 +63,12 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
     return c.publishStatus?.isPublished === true && c.scheduleOn <= today && today <= c.scheduleOff;
   });
 
-  /** Data + QR outcome are in (success or loud failure) — preview controls may enable. */
-  protected readonly ready = computed(() => !!this.course() && (!!this.qrDataUrl() || this.qrError()));
+  /**
+   * Data + QR outcome are in (success or loud failure) — preview controls may enable. Gated on
+   * `qrPainted` (the <img> has decoded), not merely `qrDataUrl` being set — a fast manual 列印
+   * click must not race ahead of the paint.
+   */
+  protected readonly ready = computed(() => !!this.course() && (this.qrPainted() || this.qrError()));
 
   /** 列印 stays disabled for a non-live course until the banner's explicit confirm. */
   protected readonly canPrint = computed(() => this.ready() && (this.isLive() || this.printConfirmed()));
@@ -73,26 +82,30 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
     this.printPending.set(this.route.snapshot.queryParamMap.get('print') === '1');
 
     const pkid = Number(this.route.snapshot.paramMap.get('id'));
-    this.service.getWithLabels(pkid).subscribe({
-      next: ({ course, certificationLabels }) => {
-        this.course.set(course);
-        this.certificationLabels.set(certificationLabels);
-        this.loading.set(false);
-        // Chrome's Save-as-PDF default filename comes from document.title. Trimmed CourseId:
-        // a trailing space (pkid 2103) does not survive a filesystem anyway.
-        this.document.title = `${course.courseId.trim()} ${course.title}`;
-        void this.renderQr(course);
-      },
-      error: () => {
-        this.notFound.set(true);
-        this.loading.set(false);
-      },
-    });
+    this.service
+      .getWithLabels(pkid)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: ({ course, certificationLabels }) => {
+          this.course.set(course);
+          this.certificationLabels.set(certificationLabels);
+          this.loading.set(false);
+          // Chrome's Save-as-PDF default filename comes from document.title. Trimmed CourseId:
+          // a trailing space (pkid 2103) does not survive a filesystem anyway.
+          this.document.title = `${course.courseId.trim()} ${course.title}`;
+          void this.renderQr(course);
+        },
+        error: () => {
+          this.notFound.set(true);
+          this.loading.set(false);
+        },
+      });
   }
 
   ngOnDestroy(): void {
     // Runs on the notFound path too — a leaked body class would rewire every route's Ctrl+P,
     // and a stuck title would mislabel the tab for the rest of the session.
+    this.destroyed = true;
     this.renderer.removeClass(this.document.body, 'flyer-print');
     this.document.title = this.originalTitle;
   }
@@ -108,8 +121,14 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
 
   /** The sheet's QR <img> has decoded — the last precondition for a pending auto-print. */
   protected onQrImageLoaded(): void {
-    this.qrPainted = true;
+    this.qrPainted.set(true);
     this.tryAutoPrint();
+  }
+
+  /** The sheet's QR <img> failed to decode a set src — loud, same as a toDataURL rejection. */
+  protected onQrImageError(): void {
+    this.qrDataUrl.set('');
+    this.qrError.set(true);
   }
 
   protected confirmPrint(): void {
@@ -117,15 +136,19 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
     this.tryAutoPrint();
   }
 
-  /** 列印 button — enabled only via canPrint(), so the gate has already been satisfied. */
+  /**
+   * 列印 button — enabled only via canPrint(), so the gate has already been satisfied. Routed
+   * through queuePrint (not a direct firePrint) so a fast click can't collide with change
+   * detection any more than the auto-print path does.
+   */
   protected print(): void {
-    this.firePrint();
+    this.queuePrint(() => this.firePrint());
   }
 
   /** QR failed while `?print=1` was armed and the user chose to print anyway. */
   protected printWithoutQr(): void {
     if (this.isLive() || this.printConfirmed()) {
-      this.firePrint();
+      this.queuePrint(() => this.firePrint());
     }
   }
 
@@ -141,7 +164,7 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
 
   private tryAutoPrint(): void {
     if (!this.printPending() || this.printScheduled) return;
-    if (!this.course() || !this.qrPainted) return;
+    if (!this.course() || !this.qrPainted()) return;
     if (!this.isLive() && !this.printConfirmed()) return; // held by the banner until confirm
     this.printScheduled = true; // fire-once, even if another precondition re-triggers
     this.queuePrint(() => this.firePrint());
@@ -156,7 +179,14 @@ export class CourseFlyerPage implements OnInit, OnDestroy {
     requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(fire)));
   }
 
+  /**
+   * `destroyed` stops a deferred fire from opening the dialog on whatever route is now mounted
+   * (navigated away mid-queuePrint). `printFired` stops a manual 列印 click from racing the
+   * auto-print path into a second dialog (both go through queuePrint, so either can win).
+   */
   private firePrint(): void {
+    if (this.destroyed || this.printFired) return;
+    this.printFired = true;
     window.print();
     if (this.printPending()) {
       this.printPending.set(false);

@@ -207,5 +207,14 @@ describe('CourseFlyerSheet', () => {
       fixture.detectChanges();
       expect(el.querySelector('.sheet__qr-image')).not.toBeNull();
     });
+
+    it('emits qrImageError when the QR <img> fails to decode (P2.1)', (done) => {
+      const { fixture, el } = setup();
+      fixture.componentInstance.qrImageError.subscribe(() => done());
+      // Valid base64, but not a real PNG — the browser fires a genuine error event on decode failure.
+      fixture.componentRef.setInput('qrDataUrl', 'data:image/png;base64,AAAAAAAAAAAAAAAA');
+      fixture.detectChanges();
+      expect(el.querySelector('.sheet__qr-image')).not.toBeNull();
+    });
   });
 });

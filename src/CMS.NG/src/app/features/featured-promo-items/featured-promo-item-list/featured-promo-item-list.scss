@@ -11,17 +11,23 @@
     padding: 0.75rem 0 1rem;
   }
 
+  // Matches course-list.scss's .icon-btn treatment — the same icon-button convention used for
+  // every other row/toolbar action in the app, instead of a one-off text-link style.
   &__weekbtn {
-    background: none;
+    background: transparent;
     border: none;
-    padding: 0.15rem 0.4rem;
-    font: inherit;
-    font-weight: 600;
-    color: var(--p-primary-color, #2563eb);
     cursor: pointer;
+    padding: 6px;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 0.95rem;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
 
     &:hover {
-      color: var(--p-primary-hover-color, #1d4ed8);
+      background: #f1f5f9;
+      color: #0f766e;
     }
   }
 
@@ -62,31 +68,37 @@
     color: var(--p-text-muted-color, #6b7280);
   }
 
+  // Icon-button convention matching .icon-btn in course-list.scss (view/edit/delete on every
+  // other list page) — was previously an underlined text-link style unique to this page.
   &__link {
-    background: none;
+    background: transparent;
     border: none;
-    padding: 0 0.1rem;
-    font: inherit;
-    font-size: 0.8rem;
-    color: var(--p-primary-color, #2563eb);
-    text-decoration: underline;
     cursor: pointer;
+    padding: 4px;
+    margin: 0 1px;
+    border-radius: 6px;
+    color: #64748b;
+    font-size: 0.85rem;
+    transition:
+      background 0.12s ease,
+      color 0.12s ease;
 
     &:hover:not(:disabled) {
-      color: var(--p-primary-hover-color, #1d4ed8);
+      background: #f1f5f9;
+      color: #2563eb;
     }
 
     &:disabled {
-      color: var(--p-text-muted-color, #9ca3af);
-      text-decoration: none;
+      color: #cbd5e1;
       cursor: default;
     }
 
     &--danger {
-      color: var(--p-red-500, #dc2626);
+      color: #dc2626;
 
       &:hover:not(:disabled) {
-        color: var(--p-red-600, #b91c1c);
+        background: #fef2f2;
+        color: #b91c1c;
       }
     }
   }

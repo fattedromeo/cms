@@ -19,9 +19,11 @@
       class="promo-grid__weekbtn"
       data-testid="prev-week"
       (click)="prevWeek()"
+      pTooltip="上一週"
+      tooltipPosition="top"
       aria-label="上一週"
     >
-      &lt;&lt;--
+      <i class="pi pi-angle-left"></i>
     </button>
     <span class="promo-grid__weeklabel" data-testid="week-label">{{ weekLabel() }}</span>
     <button
@@ -29,9 +31,11 @@
       class="promo-grid__weekbtn"
       data-testid="next-week"
       (click)="nextWeek()"
+      pTooltip="下一週"
+      tooltipPosition="top"
       aria-label="下一週"
     >
-      --&gt;&gt;
+      <i class="pi pi-angle-right"></i>
     </button>
   </div>
 
@@ -55,8 +59,10 @@
             [disabled]="!canMoveDown(row)"
             (click)="move(row.item!, 'down')"
             pTooltip="往下移一欄"
+            tooltipPosition="top"
+            aria-label="往下移一欄"
           >
-            +
+            <i class="pi pi-plus"></i>
           </button>
           <button
             type="button"
@@ -65,8 +71,10 @@
             [disabled]="!canMoveUp(row)"
             (click)="move(row.item!, 'up')"
             pTooltip="往上移一欄"
+            tooltipPosition="top"
+            aria-label="往上移一欄"
           >
-            --
+            <i class="pi pi-minus"></i>
           </button>
 
           <button
@@ -74,8 +82,11 @@
             class="promo-row__link"
             data-testid="edit"
             (click)="openPanel(day.iso, row.slot)"
+            pTooltip="編輯"
+            tooltipPosition="top"
+            aria-label="編輯"
           >
-            Edit
+            <i class="pi pi-pencil"></i>
           </button>
 
           @if (row.item) {
@@ -84,16 +95,22 @@
               class="promo-row__link"
               data-testid="copy"
               (click)="copy(row.item)"
+              pTooltip="複製"
+              tooltipPosition="top"
+              aria-label="複製"
             >
-              Copy
+              <i class="pi pi-copy"></i>
             </button>
             <button
               type="button"
               class="promo-row__link promo-row__link--danger"
               data-testid="delete"
               (click)="remove(row.item)"
+              pTooltip="刪除"
+              tooltipPosition="top"
+              aria-label="刪除"
             >
-              Delete
+              <i class="pi pi-trash"></i>
             </button>
           } @else {
             <!-- An empty cell offers Paste instead of Copy/Delete (ui-new.spec.png). -->
@@ -104,8 +121,10 @@
               [disabled]="!clipboard()"
               (click)="paste(day.iso, row.slot)"
               [pTooltip]="clipboard() ? '貼上「' + clipboard()!.promoCode + '」' : '尚未複製任何資料'"
+              tooltipPosition="top"
+              aria-label="貼上"
             >
-              Paste
+              <i class="pi pi-clipboard"></i>
             </button>
           }
 
